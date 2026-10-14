@@ -115,13 +115,22 @@ class ShipmentFields
      * Applies the milestone gate to one field: disabled until its milestone is
      * reached, with a helper text naming the step that unlocks it. Editable
      * input fields that are still empty carry the `bl-empty-field` marker so
-     * the panel theme can tint them.
+     * the panel theme can tint them. With `$requiredOnceUnlocked` the field is
+     * only validated as required after its milestone is reached: Filament
+     * still validates disabled fields, so a locked `required()` field would
+     * otherwise block saving while it cannot be edited.
      */
-    public static function gate(Field $field, string $milestoneEnum, BackedEnum $required, string $prefix = ''): Field
+    public static function gate(Field $field, string $milestoneEnum, BackedEnum $required, string $prefix = '', bool $requiredOnceUnlocked = false): Field
     {
         $field = $field
             ->disabled(self::locked($milestoneEnum, $required, $prefix))
             ->helperText(self::lockedHelperText($milestoneEnum, $required, $prefix));
+
+        if ($requiredOnceUnlocked) {
+            $locked = self::locked($milestoneEnum, $required, $prefix);
+
+            $field->required(fn (Get $get): bool => ! $locked($get));
+        }
 
         if ($field instanceof TextInput || $field instanceof Textarea || $field instanceof Select || $field instanceof DateTimePicker) {
             $field->extraFieldWrapperAttributes(self::emptyMarker($milestoneEnum, $required, $prefix));
@@ -136,10 +145,10 @@ class ShipmentFields
      * @param  list<Field>  $fields
      * @return list<Field>
      */
-    public static function gated(array $fields, string $milestoneEnum, BackedEnum $required, string $prefix = ''): array
+    public static function gated(array $fields, string $milestoneEnum, BackedEnum $required, string $prefix = '', bool $requiredOnceUnlocked = false): array
     {
         return array_map(
-            fn (Field $field): Field => self::gate($field, $milestoneEnum, $required, $prefix),
+            fn (Field $field): Field => self::gate($field, $milestoneEnum, $required, $prefix, $requiredOnceUnlocked),
             $fields,
         );
     }

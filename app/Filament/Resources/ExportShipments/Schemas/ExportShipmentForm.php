@@ -88,7 +88,7 @@ class ExportShipmentForm
                                 Grid::make(2)
                                     ->columnSpanFull()
                                     ->schema(ShipmentFields::gated(ContainerFields::exportTracking(), $enum, ExportMilestone::OnTheWayToFactory, '../../')),
-                                ...ShipmentFields::gated(ContainerFields::exportStuffing(), $enum, ExportMilestone::StuffingPebNpe, '../../'),
+                                ...ShipmentFields::gated(ContainerFields::exportStuffing(), $enum, ExportMilestone::StuffingPebNpe, '../../', requiredOnceUnlocked: true),
                                 ...ShipmentFields::gated(
                                     ContainerFields::exportGateIn(fn (Get $get): ?string => $get('../../port_of_loading')),
                                     $enum,
