@@ -69,6 +69,7 @@ class ShipmentFields
                     ->hidden(fn (string $operation): bool => $operation === 'edit' && ! auth()->user()?->hasAnyRole(Role::PRIVILEGED)),
                 TextInput::make('company_name_snapshot')
                     ->label('Customer name')
+                    ->helperText('Only admins can change this.')
                     ->disabled(fn (): bool => ! auth()->user()?->hasAnyRole(Role::PRIVILEGED))
                     ->visibleOn('edit'),
                 DatePicker::make('document_received_date')
@@ -80,6 +81,7 @@ class ShipmentFields
                     // Staff only: customer accounts never receive documents.
                     ->relationship('documentReceivedBy', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->internal())
                     ->default(auth()->id())
+                    ->helperText('Only admins can change this.')
                     ->disabled(fn (): bool => ! auth()->user()?->hasAnyRole(Role::PRIVILEGED))
                     ->dehydrated(fn (): bool => (bool) auth()->user()?->hasAnyRole(Role::PRIVILEGED)),
             ]);
@@ -328,7 +330,7 @@ class ShipmentFields
                 ], $milestoneEnum, $unlockedAt),
                 Toggle::make('hidden_from_portal')
                     ->label('Hide from customer portal')
-                    ->helperText('Only admins can change this. While on, customers cannot list or open this B/L in the portal. Moving progress does not change it.')
+                    ->helperText('Only admins can change this.')
                     ->disabled(fn (): bool => ! auth()->user()?->hasAnyRole(Role::PRIVILEGED))
                     ->dehydrated(fn (): bool => (bool) auth()->user()?->hasAnyRole(Role::PRIVILEGED)),
             ]);
