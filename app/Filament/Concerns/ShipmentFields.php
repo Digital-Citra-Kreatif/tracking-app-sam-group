@@ -328,7 +328,7 @@ class ShipmentFields
                 ], $milestoneEnum, $unlockedAt),
                 Toggle::make('hidden_from_portal')
                     ->label('Hide from customer portal')
-                    ->helperText('Customers cannot list or open this B/L while on. Moving progress does not change it.')
+                    ->helperText('Only admins can change this. While on, customers cannot list or open this B/L in the portal. Moving progress does not change it.')
                     ->disabled(fn (): bool => ! auth()->user()?->hasAnyRole(Role::PRIVILEGED))
                     ->dehydrated(fn (): bool => (bool) auth()->user()?->hasAnyRole(Role::PRIVILEGED)),
             ]);
