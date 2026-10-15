@@ -53,6 +53,7 @@ class UserForm
                             ->helperText('Customer users sign in with a one-time password; a password is only needed for staff.'),
                         Toggle::make('is_active')
                             ->default(true)
+                            ->helperText('Only admins can change this.')
                             ->disabled(fn (): bool => ! auth()->user()?->hasAnyRole(Role::PRIVILEGED)),
                     ]),
                 Section::make('Access')

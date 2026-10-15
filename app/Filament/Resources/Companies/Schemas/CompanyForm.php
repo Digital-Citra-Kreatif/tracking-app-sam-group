@@ -53,6 +53,7 @@ class CompanyForm
                             ->columnSpanFull(),
                         Toggle::make('is_active')
                             ->default(true)
+                            ->helperText('Only admins can change this.')
                             ->disabled(fn (): bool => ! auth()->user()?->hasAnyRole(Role::PRIVILEGED)),
                     ]),
                 Section::make('Linked users')
