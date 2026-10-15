@@ -45,7 +45,18 @@ trait ActsAsShipment
         static::saving(function (Model $shipment): void {
             $shipment->reconcileMilestoneWithResponse();
         });
+
+        static::saved(function (Model $shipment): void {
+            $shipment->logReconciledMilestone();
+        });
     }
+
+    /**
+     * The milestone a billing-response change pulled the shipment back from,
+     * held between the saving and saved events so the move can be logged
+     * once the row is written.
+     */
+    protected ?BackedEnum $reconciledFromMilestone = null;
 
     /**
      * Keeps the milestone consistent with the billing response on save. The
@@ -79,7 +90,7 @@ trait ActsAsShipment
             // No response change: only guard against an unreachable milestone
             // for the response in effect.
             if (! in_array($current, $this->milestoneSequence(), true)) {
-                $this->current_milestone = $enum::ResponseBilling;
+                $this->pullBackToMilestone($enum::ResponseBilling);
             }
 
             return;
@@ -95,15 +106,45 @@ trait ActsAsShipment
             $responseBillingIndex = array_search($enum::ResponseBilling, $this->milestoneSequence(), true);
 
             if ($responseBillingIndex !== false && array_search($current, $this->milestoneSequence(), true) > $responseBillingIndex) {
-                $this->current_milestone = $enum::ResponseBilling;
+                $this->pullBackToMilestone($enum::ResponseBilling);
             }
 
             return;
         }
 
         if ($oldResponse === $spjm && $newResponse !== $spjm && in_array($current, $this->milestoneSequence(), true) === false) {
-            $this->current_milestone = $enum::ResponseBilling;
+            $this->pullBackToMilestone($enum::ResponseBilling);
         }
+    }
+
+    /**
+     * Moves the milestone back as part of a save (see
+     * reconcileMilestoneWithResponse): the status follows the same rules as
+     * moveToMilestone(), so a completed shipment reopens, and the move is
+     * logged after the save like any other milestone change.
+     */
+    private function pullBackToMilestone(BackedEnum $target): void
+    {
+        $this->reconciledFromMilestone = $this->current_milestone;
+        $this->current_milestone = $target;
+        $this->syncStatusWithMilestone($target);
+    }
+
+    /**
+     * Writes the milestone_changed entry for a pull-back made while saving, so
+     * the portal timeline and audit trail see it like a manual move.
+     */
+    public function logReconciledMilestone(): void
+    {
+        $from = $this->reconciledFromMilestone;
+
+        if ($from === null) {
+            return;
+        }
+
+        $this->reconciledFromMilestone = null;
+
+        $this->logMilestoneChange($from, $this->current_milestone);
     }
 
     /**
@@ -192,6 +233,20 @@ trait ActsAsShipment
 
         $from = $this->current_milestone;
         $this->current_milestone = $target;
+        $this->syncStatusWithMilestone($target);
+
+        $this->save();
+
+        $this->logMilestoneChange($from, $target);
+    }
+
+    /**
+     * Reaching the last milestone completes the shipment; moving off it
+     * reopens it; leaving the first milestone publishes a draft.
+     */
+    private function syncStatusWithMilestone(BackedEnum $target): void
+    {
+        $sequence = $this->milestoneSequence();
 
         if ($target === end($sequence)) {
             $this->status = ShipmentStatus::Completed;
@@ -204,17 +259,18 @@ trait ActsAsShipment
             // publishes the shipment to the customer portal.
             $this->status = ShipmentStatus::InProgress;
         }
+    }
 
-        $this->save();
-
+    private function logMilestoneChange(?BackedEnum $from, BackedEnum $to): void
+    {
         app(ActivityLogger::class)->record(
             shipment: $this,
             event: 'milestone_changed',
             entityType: $this::class,
             entityId: $this->getKey(),
             oldValues: ['milestone' => $from?->value],
-            newValues: ['milestone' => $target->value],
-            customerSummary: 'Progress moved to '.$target->getLabel(),
+            newValues: ['milestone' => $to->value],
+            customerSummary: 'Progress moved to '.$to->getLabel(),
         );
     }
 }

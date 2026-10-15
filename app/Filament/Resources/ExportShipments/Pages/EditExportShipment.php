@@ -124,8 +124,11 @@ class EditExportShipment extends EditRecord
             );
         });
 
-        // Re-seed the repeater so the pickers show the synced selection.
-        $this->refreshFormData(['containers']);
+        // Refill the whole form from the database so the pickers show the
+        // synced selection, new container rows carry their column defaults
+        // (e.g. stuffing status) and the milestone reflects any pull-back.
+        $this->record->refresh();
+        $this->fillForm();
     }
 
     protected function getHeaderActions(): array
