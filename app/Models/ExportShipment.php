@@ -32,7 +32,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'voyage_number', 'port_of_loading', 'port_of_discharge', 'depot_closing_at', 'cy_closing_at',
     'pickup_depot_name', 'stuffing_date', 'stuffing_destination',
     'departure_date', 'eta_at',
-    'status', 'current_milestone', 'completed_at',
+    'status', 'hidden_from_portal', 'current_milestone', 'completed_at',
 ])]
 class ExportShipment extends Model
 {
@@ -62,6 +62,7 @@ class ExportShipment extends Model
         return [
             'shipment_mode' => ShipmentMode::class,
             'status' => ShipmentStatus::class,
+            'hidden_from_portal' => 'boolean',
             'current_milestone' => ExportMilestone::class,
             'document_received_date' => 'date',
             'depot_closing_at' => 'datetime',

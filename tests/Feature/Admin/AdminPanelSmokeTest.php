@@ -219,6 +219,54 @@ class AdminPanelSmokeTest extends TestCase
         }
     }
 
+    public function test_only_admins_can_hide_a_shipment_from_the_portal(): void
+    {
+        $export = ExportShipment::query()->where('bl_number', 'BL-EXP-0001')->firstOrFail();
+        $export->update(['current_milestone' => ExportMilestone::CheckingBookingOrder]);
+
+        $operator = User::factory()->create();
+        $operator->assignRole(Role::OPERATOR);
+        $operator->companies()->sync([$export->company_id]);
+
+        // An operator cannot flip the flag, even with a crafted request.
+        $this->actingAs($operator);
+
+        Livewire::test(EditExportShipment::class, ['record' => $export->getRouteKey()])
+            ->assertFormFieldIsDisabled('hidden_from_portal')
+            ->set('data.hidden_from_portal', true)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertFalse($export->refresh()->hidden_from_portal);
+
+        // An admin can, at any step; moving progress keeps it.
+        $this->actingAs($this->admin());
+
+        Livewire::test(EditExportShipment::class, ['record' => $export->getRouteKey()])
+            ->assertFormFieldIsEnabled('hidden_from_portal')
+            ->set('data.hidden_from_portal', true)
+            ->call('save')
+            ->assertHasNoFormErrors()
+            ->callAction('advanceMilestone')
+            ->callAction('regressMilestone');
+
+        $this->assertTrue($export->refresh()->hidden_from_portal);
+    }
+
+    public function test_the_status_field_does_not_offer_draft_once_published(): void
+    {
+        $admin = $this->admin();
+
+        $export = ExportShipment::query()->where('bl_number', 'BL-EXP-0001')->firstOrFail();
+        $export->moveToMilestone(ExportMilestone::FinalChecking);
+
+        $this->actingAs($admin);
+
+        Livewire::test(EditExportShipment::class, ['record' => $export->getRouteKey()])
+            ->assertFormFieldExists('status', fn (Select $field): bool => ! array_key_exists(ShipmentStatus::Draft->value, $field->getOptions())
+                && array_key_exists(ShipmentStatus::Completed->value, $field->getOptions()));
+    }
+
     public function test_admin_can_view_an_activity_log_entry(): void
     {
         $admin = $this->admin();
