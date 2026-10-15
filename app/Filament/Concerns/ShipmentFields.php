@@ -37,6 +37,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -304,8 +305,12 @@ class ShipmentFields
 
     /**
      * The status tab: the shipment lifecycle fields, kept out of the process
-     * tabs and shown after Containers. Gated at the last milestone like the
-     * rest of the form; the milestone engine maintains the same values.
+     * tabs and shown after Containers. Status and completed date are gated at
+     * the last milestone like the rest of the form; the milestone engine
+     * maintains the same values. Draft is not offered there because the next
+     * milestone move would publish the shipment again; hiding it from the
+     * portal is the separate, ungated `hidden_from_portal` toggle, which only
+     * admins may change and milestone moves never touch.
      */
     public static function statusTab(string $milestoneEnum, BackedEnum $unlockedAt): Tab
     {
@@ -314,11 +319,18 @@ class ShipmentFields
             ->schema([
                 ...self::gated([
                     Select::make('status')
-                        ->options(ShipmentStatus::options())
+                        ->options(fn (mixed $state): array => self::enumValue($state, ShipmentStatus::class) === ShipmentStatus::Draft
+                            ? ShipmentStatus::options()
+                            : collect(ShipmentStatus::options())->except(ShipmentStatus::Draft->value)->all())
                         ->default(ShipmentStatus::Draft),
                     DateTimePicker::make('completed_at')
                         ->label('Completed at'),
                 ], $milestoneEnum, $unlockedAt),
+                Toggle::make('hidden_from_portal')
+                    ->label('Hide from customer portal')
+                    ->helperText('Customers cannot list or open this B/L while on. Moving progress does not change it.')
+                    ->disabled(fn (): bool => ! auth()->user()?->hasAnyRole(Role::PRIVILEGED))
+                    ->dehydrated(fn (): bool => (bool) auth()->user()?->hasAnyRole(Role::PRIVILEGED)),
             ]);
     }
 

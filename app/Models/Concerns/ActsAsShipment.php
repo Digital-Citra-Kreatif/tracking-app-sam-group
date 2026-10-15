@@ -149,11 +149,15 @@ trait ActsAsShipment
 
     /**
      * The customer portal only lists and opens shipments that have left the
-     * draft state; drafts stay internal until the process starts.
+     * draft state; drafts stay internal until the process starts. An admin
+     * can also hide a shipment at any step with `hidden_from_portal`, which
+     * milestone moves never change.
      */
     public function scopeVisibleInPortal(Builder $query): Builder
     {
-        return $query->where('status', '!=', ShipmentStatus::Draft->value);
+        return $query
+            ->where('status', '!=', ShipmentStatus::Draft->value)
+            ->where('hidden_from_portal', false);
     }
 
     /**

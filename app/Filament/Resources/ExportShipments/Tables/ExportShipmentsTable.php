@@ -34,6 +34,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use pxlrbt\FilamentExcel\Actions\ExportAction;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
@@ -67,6 +68,7 @@ class ExportShipmentsTable
                     ->badge()
                     ->formatStateUsing(fn (ShipmentStatus $state): string => $state->label())
                     ->color(fn (ShipmentStatus $state): string => $state->color())
+                    ->description(fn (Model $record): ?string => $record->hidden_from_portal ? 'Hidden from portal' : null)
                     ->sortable(),
                 TextColumn::make('containers.container_number')
                     ->label('Containers')

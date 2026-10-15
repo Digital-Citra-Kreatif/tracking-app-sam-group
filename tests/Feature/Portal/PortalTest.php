@@ -509,6 +509,44 @@ class PortalTest extends TestCase
             ->assertSee($importContainer->container_number);
     }
 
+    public function test_a_shipment_hidden_by_an_admin_stays_hidden_while_its_milestone_moves(): void
+    {
+        $user = $this->portalUser();
+        $company = $user->companies()->first();
+
+        $export = $this->exportShipmentFor($company, 'BL-PORTAL-HIDDEN');
+        $export->update(['hidden_from_portal' => true]);
+
+        $import = $this->importShipmentFor($company, 'BL-PORTAL-HIDDEN-IMP');
+        $import->update(['hidden_from_portal' => true]);
+
+        // Moving progress either way, or completing it, keeps the shipment
+        // out of the portal: only the flag decides.
+        $export->moveToMilestone(ExportMilestone::FinalChecking);
+        $export->regressMilestone();
+        $import->advanceMilestone();
+
+        $this->actingAs($user)
+            ->get(route('customer.dashboard'))
+            ->assertOk()
+            ->assertDontSee('BL-PORTAL-HIDDEN');
+
+        $this->actingAs($user)
+            ->get(route('customer.export-shipments.show', ['exportShipment' => $export->getKey()]))
+            ->assertNotFound();
+
+        $this->actingAs($user)
+            ->get(route('customer.import-shipments.show', ['importShipment' => $import->getKey()]))
+            ->assertNotFound();
+
+        $export->update(['hidden_from_portal' => false]);
+
+        $this->actingAs($user)
+            ->get(route('customer.dashboard'))
+            ->assertOk()
+            ->assertSee('BL-PORTAL-HIDDEN');
+    }
+
     public function test_draft_shipments_are_hidden_from_the_portal(): void
     {
         $user = $this->portalUser();
