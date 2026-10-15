@@ -26,7 +26,7 @@ class EditUser extends EditRecord
     {
         return [
             Impersonate::make()->record($this->getRecord())->redirectTo('/'),
-            $this->getSaveFormAction(),
+            $this->getSaveFormAction()->formId('form'),
         ];
     }
 }

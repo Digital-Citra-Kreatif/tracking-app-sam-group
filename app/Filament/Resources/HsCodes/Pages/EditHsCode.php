@@ -21,7 +21,7 @@ class EditHsCode extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            $this->getSaveFormAction(),
+            $this->getSaveFormAction()->formId('form'),
         ];
     }
 }

@@ -26,6 +26,8 @@ use App\Filament\Resources\Companies\Pages\EditCompany;
 use App\Filament\Resources\Companies\RelationManagers\ExportShipmentsRelationManager;
 use App\Filament\Resources\Companies\RelationManagers\ImportShipmentsRelationManager;
 use App\Filament\Resources\ExportContainers\ExportContainerResource;
+use App\Filament\Resources\ExportContainers\Pages\CreateExportContainer;
+use App\Filament\Resources\ExportContainers\Pages\EditExportContainer;
 use App\Filament\Resources\ExportContainers\Pages\ListExportContainers;
 use App\Filament\Resources\ExportShipments\ExportShipmentResource;
 use App\Filament\Resources\ExportShipments\Pages\CreateExportShipment;
@@ -33,21 +35,28 @@ use App\Filament\Resources\ExportShipments\Pages\EditExportShipment;
 use App\Filament\Resources\ExportShipments\Pages\ListExportShipments;
 use App\Filament\Resources\HsCodes\HsCodeResource;
 use App\Filament\Resources\HsCodes\Pages\CreateHsCode;
+use App\Filament\Resources\HsCodes\Pages\EditHsCode;
 use App\Filament\Resources\ImportContainers\ImportContainerResource;
 use App\Filament\Resources\ImportContainers\Pages\CreateImportContainer;
+use App\Filament\Resources\ImportContainers\Pages\EditImportContainer;
 use App\Filament\Resources\ImportContainers\Pages\ListImportContainers;
 use App\Filament\Resources\ImportShipments\ImportShipmentResource;
 use App\Filament\Resources\ImportShipments\Pages\CreateImportShipment;
 use App\Filament\Resources\ImportShipments\Pages\EditImportShipment;
 use App\Filament\Resources\ImportShipments\Pages\ListImportShipments;
+use App\Filament\Resources\Users\Pages\CreateUser;
+use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\UserResource;
+use App\Models\ActivityLog;
 use App\Models\Company;
+use App\Models\ExportContainer;
 use App\Models\ExportShipment;
 use App\Models\HsCode;
 use App\Models\ImportContainer;
 use App\Models\ImportShipment;
 use App\Models\Role;
 use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -165,6 +174,60 @@ class AdminPanelSmokeTest extends TestCase
         Livewire::test(EditImportShipment::class, ['record' => $import->getRouteKey()])
             ->assertActionExists('createShipment')
             ->assertActionHasUrl('createShipment', CreateImportShipment::getUrl());
+    }
+
+    /**
+     * The header Create/Save buttons render outside the page's <form>, so they
+     * only submit it when they point at the form by id.
+     */
+    public function test_header_submit_actions_target_the_page_form(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::SUPER_ADMIN);
+        $this->actingAs($admin);
+
+        $targetsForm = fn (Action $action): bool => $action->getFormId() === 'form';
+
+        $createPages = [
+            CreateCompany::class,
+            CreateUser::class,
+            CreateHsCode::class,
+            CreateExportShipment::class,
+            CreateImportShipment::class,
+            CreateExportContainer::class,
+            CreateImportContainer::class,
+        ];
+
+        foreach ($createPages as $page) {
+            Livewire::test($page)->assertActionExists('create', $targetsForm);
+        }
+
+        $editPages = [
+            EditCompany::class => Company::query()->firstOrFail(),
+            EditUser::class => $admin,
+            EditHsCode::class => HsCode::query()->firstOrFail(),
+            EditExportShipment::class => ExportShipment::query()->firstOrFail(),
+            EditImportShipment::class => ImportShipment::query()->firstOrFail(),
+            EditExportContainer::class => ExportContainer::query()->firstOrFail(),
+            EditImportContainer::class => ImportContainer::query()->firstOrFail(),
+        ];
+
+        foreach ($editPages as $page => $record) {
+            Livewire::test($page, ['record' => $record->getRouteKey()])->assertActionExists('save', $targetsForm);
+        }
+    }
+
+    public function test_admin_can_view_an_activity_log_entry(): void
+    {
+        $admin = $this->admin();
+
+        $log = ActivityLog::query()->whereNotNull('actor_id')->whereNotNull('export_shipment_id')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(ActivityLogResource::getUrl('view', ['record' => $log]))
+            ->assertOk()
+            ->assertSee($log->linkedShipment()->bl_number)
+            ->assertSee($log->actor->name);
     }
 
     public function test_navigation_groups_ladings_and_containers_with_export_and_import_items(): void

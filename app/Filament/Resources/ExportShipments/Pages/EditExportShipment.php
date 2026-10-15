@@ -159,7 +159,7 @@ class EditExportShipment extends EditRecord
                     $this->refreshFormData(['current_milestone']);
                 }),
             RestoreAction::make(),
-            $this->getSaveFormAction(),
+            $this->getSaveFormAction()->formId('form'),
         ];
     }
 }

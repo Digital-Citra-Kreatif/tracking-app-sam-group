@@ -71,7 +71,7 @@ class EditExportContainer extends EditRecord
     {
         return [
             RestoreAction::make(),
-            $this->getSaveFormAction(),
+            $this->getSaveFormAction()->formId('form'),
         ];
     }
 }

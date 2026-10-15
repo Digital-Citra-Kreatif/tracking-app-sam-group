@@ -25,7 +25,7 @@ class CreateUser extends CreateRecord
     protected function getHeaderActions(): array
     {
         return [
-            $this->getCreateFormAction(),
+            $this->getCreateFormAction()->formId('form'),
         ];
     }
 
