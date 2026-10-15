@@ -8,6 +8,8 @@
  *   exposes New import B/L, Regress, Advance, restore (on trashed records)
  *   and save.
  * - `jumpToMilestone()` backs the stepper's click-to-jump buttons.
+ * - Milestone moves wait until a changed billing response is saved, because
+ *   the response decides which steps exist.
  * - Each save audits the changed shipment, nested container, HS-code and
  *   attachment-assignment values.
  * How to use: Reached by editing an import shipment.
@@ -17,12 +19,12 @@
 namespace App\Filament\Resources\ImportShipments\Pages;
 
 use App\Enums\BillingResponse;
-use App\Enums\ImportMilestone;
 use App\Filament\Resources\ImportShipments\ImportShipmentResource;
 use App\Models\ImportContainer;
 use App\Services\ActivityLogger;
 use Filament\Actions\Action;
 use Filament\Actions\RestoreAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
 
@@ -61,18 +63,11 @@ class EditImportShipment extends EditRecord
                 $enum = $this->record::milestoneEnum();
                 $target = $enum::tryFrom($arguments['milestone'] ?? '');
 
-                if (! $target) {
+                if (! $target || $this->haltWhileBillingResponseIsUnsaved()) {
                     return;
                 }
 
-                // Use the billing response currently in the form, not the saved
-                // one: picking SPJM inserts the extra customs steps, so a jump
-                // that skips them must be rejected at click time too.
-                $response = $enum === ImportMilestone::class
-                    ? BillingResponse::tryFrom((string) ($this->data['billing_response'] ?? ''))
-                    : null;
-
-                $sequence = $enum::sequence($response);
+                $sequence = $this->record->milestoneSequence();
                 $currentIndex = array_search($this->record->current_milestone, $sequence, true);
                 $targetIndex = array_search($target, $sequence, true);
 
@@ -84,6 +79,30 @@ class EditImportShipment extends EditRecord
                 $this->record->refresh();
                 $this->refreshFormData(['current_milestone']);
             });
+    }
+
+    /**
+     * The billing response decides which milestones exist (SPJM adds the extra
+     * customs steps), and milestone moves are saved straight away while the
+     * form is not. Moving with a different response still unsaved in the form
+     * would either skip the SPJM steps or silently do nothing, so the move
+     * waits for the save and the user is told why.
+     */
+    private function haltWhileBillingResponseIsUnsaved(): bool
+    {
+        $formResponse = BillingResponse::tryFrom((string) ($this->data['billing_response'] ?? ''));
+
+        if ($formResponse === $this->record->billing_response) {
+            return false;
+        }
+
+        Notification::make()
+            ->warning()
+            ->title('Save the billing response first')
+            ->body('The billing response decides which steps follow, so save the form before moving progress.')
+            ->send();
+
+        return true;
     }
 
     /**
@@ -133,8 +152,11 @@ class EditImportShipment extends EditRecord
             );
         });
 
-        // Re-seed the repeater so the pickers show the synced selection.
-        $this->refreshFormData(['containers']);
+        // Refill the whole form from the database so the pickers show the
+        // synced selection, new container rows carry their column defaults
+        // (e.g. stuffing status) and the milestone reflects any pull-back.
+        $this->record->refresh();
+        $this->fillForm();
     }
 
     protected function getHeaderActions(): array
@@ -152,6 +174,10 @@ class EditImportShipment extends EditRecord
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->record->previousMilestone() !== null)
                 ->action(function (): void {
+                    if ($this->haltWhileBillingResponseIsUnsaved()) {
+                        return;
+                    }
+
                     $this->record->regressMilestone();
                     $this->record->refresh();
                     $this->refreshFormData(['current_milestone']);
@@ -163,6 +189,10 @@ class EditImportShipment extends EditRecord
                 ->modalHeading(fn (): string => 'Advance to "'.$this->record->nextMilestone()?->getLabel().'"?')
                 ->visible(fn (): bool => $this->record->nextMilestone() !== null)
                 ->action(function (): void {
+                    if ($this->haltWhileBillingResponseIsUnsaved()) {
+                        return;
+                    }
+
                     $this->record->advanceMilestone();
                     $this->record->refresh();
                     $this->refreshFormData(['current_milestone']);

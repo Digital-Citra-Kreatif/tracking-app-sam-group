@@ -19,6 +19,7 @@ use App\Enums\BillingResponse;
 use App\Enums\ExportMilestone;
 use App\Enums\ImportMilestone;
 use App\Enums\ShipmentStatus;
+use App\Filament\Concerns\ShipmentFields;
 use App\Filament\Resources\ActivityLogs\ActivityLogResource;
 use App\Filament\Resources\Companies\CompanyResource;
 use App\Filament\Resources\Companies\Pages\CreateCompany;
@@ -57,6 +58,7 @@ use App\Models\ImportShipment;
 use App\Models\Role;
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -558,34 +560,98 @@ class AdminPanelSmokeTest extends TestCase
         $this->assertSame(ImportMilestone::ResponseBilling, $shipment->refresh()->current_milestone);
     }
 
-    public function test_stepper_jump_uses_the_live_billing_response(): void
+    public function test_milestone_moves_wait_for_an_unsaved_billing_response(): void
     {
         $admin = $this->admin();
 
         $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
         $shipment->forceFill([
-            'billing_response' => BillingResponse::Ap,
+            'billing_response' => BillingResponse::Spjm,
             'current_milestone' => ImportMilestone::ResponseBilling,
         ])->save();
 
         $this->actingAs($admin);
 
-        // With SPJM selected in the form (not yet saved), jumping straight to
-        // Container shipping schedule must be refused.
+        // Saved as SPJM, switched to AP in the form but not saved: moving on
+        // must not skip the SPJM steps the saved record still has.
         Livewire::test(EditImportShipment::class, ['record' => $shipment->getRouteKey()])
-            ->set('data.billing_response', BillingResponse::Spjm->value)
+            ->set('data.billing_response', BillingResponse::Ap->value)
             ->mountAction('jumpToMilestone', ['milestone' => ImportMilestone::ContainerShippingSchedule->value])
-            ->callMountedAction();
+            ->callMountedAction()
+            ->assertNotified('Save the billing response first')
+            ->callAction('advanceMilestone')
+            ->callAction('regressMilestone');
 
         $this->assertSame(ImportMilestone::ResponseBilling, $shipment->refresh()->current_milestone);
 
-        // A non-SPJM response allows the same jump.
+        // Once the response is saved, the same jump goes through.
         Livewire::test(EditImportShipment::class, ['record' => $shipment->getRouteKey()])
             ->set('data.billing_response', BillingResponse::Ap->value)
+            ->call('save')
+            ->assertHasNoFormErrors()
             ->mountAction('jumpToMilestone', ['milestone' => ImportMilestone::ContainerShippingSchedule->value])
             ->callMountedAction();
 
         $this->assertSame(ImportMilestone::ContainerShippingSchedule, $shipment->refresh()->current_milestone);
+    }
+
+    public function test_choosing_spjm_on_a_completed_shipment_reopens_it(): void
+    {
+        $admin = $this->admin();
+
+        $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0002')->firstOrFail();
+        $shipment->forceFill(['billing_response' => BillingResponse::Sppb])->save();
+        $shipment->moveToMilestone(ImportMilestone::EmptyReturned);
+        $this->assertSame(ShipmentStatus::Completed, $shipment->status);
+
+        $this->actingAs($admin);
+
+        $page = Livewire::test(EditImportShipment::class, ['record' => $shipment->getRouteKey()])
+            ->set('data.billing_response', BillingResponse::Spjm->value)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $shipment->refresh();
+
+        // Pulled back to the branch point to run the SPJM steps: no longer
+        // completed, logged like any milestone move, and the stepper follows.
+        $this->assertSame(ImportMilestone::ResponseBilling, $shipment->current_milestone);
+        $this->assertSame(ShipmentStatus::InProgress, $shipment->status);
+        $this->assertNull($shipment->completed_at);
+        $this->assertSame(
+            ['milestone' => ImportMilestone::ResponseBilling->value],
+            $shipment->activityLogs()->where('event', 'milestone_changed')->first()?->new_values,
+        );
+        $this->assertSame(ImportMilestone::ResponseBilling->value, ShipmentFields::enumValue($page->get('data.current_milestone'), ImportMilestone::class)?->value);
+    }
+
+    public function test_a_container_added_before_stuffing_saves_again_after_advancing(): void
+    {
+        $admin = $this->admin();
+
+        $export = ExportShipment::query()->where('bl_number', 'BL-EXP-0001')->firstOrFail();
+        $export->containers()->delete();
+        $export->update(['current_milestone' => ExportMilestone::PickupEmptyContainer]);
+
+        $this->actingAs($admin);
+
+        $page = Livewire::test(EditExportShipment::class, ['record' => $export->getRouteKey()])
+            ->callAction(TestAction::make('add')->schemaComponent('containers'));
+
+        $key = array_key_first($page->get('data.containers'));
+
+        // Saved while the stuffing status is still locked, then advanced to
+        // the stuffing step on the same page: saving again must not demand a
+        // stuffing status the container already has.
+        $page->set("data.containers.{$key}.container_number", 'ABCU1234567')
+            ->call('save')
+            ->assertHasNoFormErrors()
+            ->callAction('advanceMilestone')
+            ->callAction('advanceMilestone')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(ExportMilestone::StuffingPebNpe, $export->refresh()->current_milestone);
     }
 
     public function test_stepper_rows_hold_at_most_ten_steps(): void
