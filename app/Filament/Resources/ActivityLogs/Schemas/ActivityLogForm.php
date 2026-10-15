@@ -29,8 +29,9 @@ class ActivityLogForm
                     ->schema([
                         TextInput::make('event')
                             ->disabled(),
-                        TextInput::make('actor.name')
+                        TextInput::make('actor_name')
                             ->label('Actor')
+                            ->formatStateUsing(fn (?ActivityLog $record): string => $record?->actor?->name ?? 'system')
                             ->disabled(),
                         TextInput::make('entity_type')
                             ->disabled(),
@@ -44,11 +45,11 @@ class ActivityLogForm
                     ->schema([
                         TextInput::make('shipment')
                             ->label('Shipment')
-                            ->state(fn (?ActivityLog $record): ?string => $record?->linkedShipment()?->bl_number)
+                            ->formatStateUsing(fn (?ActivityLog $record): ?string => $record?->linkedShipment()?->bl_number)
                             ->disabled(),
                         TextInput::make('container')
                             ->label('Container')
-                            ->state(fn (?ActivityLog $record): ?string => $record?->linkedContainer()?->container_number)
+                            ->formatStateUsing(fn (?ActivityLog $record): ?string => $record?->linkedContainer()?->container_number)
                             ->disabled(),
                         Textarea::make('customer_summary')
                             ->disabled()

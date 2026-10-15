@@ -101,7 +101,7 @@ class EditImportContainer extends EditRecord
     {
         return [
             RestoreAction::make(),
-            $this->getSaveFormAction(),
+            $this->getSaveFormAction()->formId('form'),
         ];
     }
 }
