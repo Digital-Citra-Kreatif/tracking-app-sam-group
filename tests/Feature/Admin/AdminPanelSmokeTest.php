@@ -18,7 +18,9 @@ namespace Tests\Feature\Admin;
 use App\Enums\BillingResponse;
 use App\Enums\ExportMilestone;
 use App\Enums\ImportMilestone;
+use App\Enums\PebNpeCheckStatus;
 use App\Enums\ShipmentStatus;
+use App\Enums\SpjmResponse;
 use App\Filament\Concerns\ShipmentFields;
 use App\Filament\Resources\ActivityLogs\ActivityLogResource;
 use App\Filament\Resources\Companies\CompanyResource;
@@ -671,6 +673,96 @@ class AdminPanelSmokeTest extends TestCase
             $shipment->activityLogs()->where('event', 'milestone_changed')->first()?->new_values,
         );
         $this->assertSame(ImportMilestone::ResponseBilling->value, ShipmentFields::enumValue($page->get('data.current_milestone'), ImportMilestone::class)?->value);
+    }
+
+    public function test_the_second_spjm_response_is_dropped_once_it_no_longer_applies(): void
+    {
+        $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
+
+        $shipment->forceFill([
+            'billing_response' => BillingResponse::Spjm,
+            'spjm_response' => SpjmResponse::Other,
+            'spjm_response_other' => 'Re-inspection',
+        ])->save();
+
+        $this->assertSame('Re-inspection', $shipment->refresh()->spjm_response_other);
+
+        // The free text only describes an "Other" response.
+        $shipment->update(['spjm_response' => SpjmResponse::Lab]);
+        $this->assertSame(SpjmResponse::Lab, $shipment->refresh()->spjm_response);
+        $this->assertNull($shipment->spjm_response_other);
+
+        // The second response only exists on the SPJM branch.
+        $shipment->update(['billing_response' => BillingResponse::Sppb]);
+        $this->assertNull($shipment->refresh()->spjm_response);
+    }
+
+    public function test_the_import_form_saves_the_spjm_response_and_requires_text_for_other(): void
+    {
+        $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
+        $shipment->forceFill([
+            'billing_response' => BillingResponse::Spjm,
+            'current_milestone' => ImportMilestone::WaitingChangeStatusSppb,
+        ])->save();
+
+        $this->actingAs($this->admin());
+
+        Livewire::test(EditImportShipment::class, ['record' => $shipment->getRouteKey()])
+            ->fillForm(['spjm_response' => SpjmResponse::Other->value])
+            ->call('save')
+            ->assertHasFormErrors(['spjm_response_other' => 'required'])
+            ->fillForm(['spjm_response_other' => 'Quarantine check'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $shipment->refresh();
+        $this->assertSame(SpjmResponse::Other, $shipment->spjm_response);
+        $this->assertSame('Quarantine check', $shipment->spjm_response_other);
+    }
+
+    public function test_extend_do_records_a_later_validity_date(): void
+    {
+        $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
+        $shipment->forceFill([
+            'current_milestone' => ImportMilestone::DoRelease,
+            'do_valid_until' => '2026-10-20',
+        ])->save();
+
+        $this->actingAs($this->admin());
+
+        Livewire::test(EditImportShipment::class, ['record' => $shipment->getRouteKey()])
+            ->callAction(TestAction::make('extendDo')->schemaComponent('do_valid_until'), ['do_extended_until' => '2026-10-15'])
+            ->assertHasActionErrors(['do_extended_until'])
+            ->callAction(TestAction::make('extendDo')->schemaComponent('do_valid_until'), ['do_extended_until' => '2026-11-05'])
+            ->assertHasNoActionErrors()
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $shipment->refresh();
+        $this->assertSame('2026-10-20', $shipment->do_valid_until->toDateString());
+        $this->assertSame('2026-11-05', $shipment->do_extended_until->toDateString());
+    }
+
+    public function test_the_export_form_saves_the_peb_npe_check_outcome_and_note(): void
+    {
+        $export = ExportShipment::query()->where('bl_number', 'BL-EXP-0001')->firstOrFail();
+        $export->update(['current_milestone' => ExportMilestone::CheckingPebNpe]);
+
+        $this->actingAs($this->admin());
+
+        Livewire::test(EditExportShipment::class, ['record' => $export->getRouteKey()])
+            ->fillForm([
+                'stuffing_date' => '2026-10-21',
+                'peb_npe_check_status' => PebNpeCheckStatus::NotPassed->value,
+                'peb_npe_check_note' => 'HS code on the PEB does not match the invoice.',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $export->refresh();
+        $this->assertSame('2026-10-21', $export->stuffing_date->toDateString());
+        $this->assertSame(PebNpeCheckStatus::NotPassed, $export->peb_npe_check_status);
+        $this->assertSame('HS code on the PEB does not match the invoice.', $export->peb_npe_check_note);
     }
 
     public function test_a_container_added_before_stuffing_saves_again_after_advancing(): void

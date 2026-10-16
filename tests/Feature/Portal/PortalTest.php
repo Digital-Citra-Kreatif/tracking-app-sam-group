@@ -21,7 +21,9 @@ use App\Enums\BillingResponse;
 use App\Enums\ContainerStatus;
 use App\Enums\ExportMilestone;
 use App\Enums\ImportMilestone;
+use App\Enums\PebNpeCheckStatus;
 use App\Enums\ShipmentStatus;
+use App\Enums\SpjmResponse;
 use App\Livewire\Customer\Dashboard;
 use App\Livewire\Customer\ExportShipmentDetail;
 use App\Livewire\Customer\ImportShipmentDetail;
@@ -654,6 +656,7 @@ class PortalTest extends TestCase
             'packages' => '85 cartons',
             'driver_name' => 'Rina Driver',
             'license_number' => 'B 1234 ABC',
+            'vehicle_number' => 'B 9911 TRK',
             'gate_out_cy_at' => '2026-09-23 09:15:00',
             'tracking_position' => 'Bekasi',
             'tracking_position_url' => 'https://tracking.example.test/import',
@@ -720,7 +723,8 @@ class PortalTest extends TestCase
         $importPage = Livewire::test(ImportShipmentDetail::class, ['importShipment' => $importShipment->getKey()]);
         foreach ([
             '40 ft', 'SEAL-IMP-22', '1020.500', 'Description of goods',
-            'Driver name', 'Rina Driver', 'No. License', 'B 1234 ABC', 'Gate out CY', 'Tracking position driver',
+            'Driver name', 'Rina Driver', 'No. License', 'B 1234 ABC', 'Vehicle / Truck Number', 'B 9911 TRK',
+            'Gate out CY', 'Tracking position driver',
             'Bekasi', 'Tracking position (url)', 'Open tracking link',
             'Loading in factory status', 'Finished', 'Return depot name', 'Jakarta Return Depot', 'Return date',
             'Photo Door', 'Visible import door photo',
@@ -748,6 +752,53 @@ class PortalTest extends TestCase
             $exportPage->assertSee($fieldOrValue);
         }
         $exportPage->assertDontSee('Gross weight (kg)');
+    }
+
+    public function test_the_timeline_shows_the_revision_fields_under_their_steps(): void
+    {
+        $company = $this->portalUser()->companies()->firstOrFail();
+        $timeline = app(ShipmentTimeline::class);
+
+        $import = $this->importShipmentFor($company, 'BL-IMP-REVISION');
+        $import->forceFill([
+            'port_of_discharge' => 'Surabaya',
+            'do_valid_until' => '2026-10-20',
+            'do_extended_until' => '2026-11-05',
+            'billing_response' => BillingResponse::Spjm,
+            'spjm_response' => SpjmResponse::Other,
+            'spjm_response_other' => 'Quarantine check',
+            'current_milestone' => ImportMilestone::WaitingChangeStatusSppb,
+        ])->save();
+
+        $importFields = collect($timeline->forShipment($import->refresh()))
+            ->mapWithKeys(fn (ShipmentTimelineEntry $entry): array => [$entry->title => collect($entry->fields)->pluck('value', 'label')->all()]);
+
+        $this->assertSame([
+            'Port of discharge' => 'Surabaya',
+            'DO valid until' => '20 Oct 2026',
+            'DO extended until' => '05 Nov 2026',
+        ], $importFields[ImportMilestone::DoRelease->getLabel()]);
+        $this->assertSame([
+            'SPJM response' => 'Other',
+            'SPJM response (other)' => 'Quarantine check',
+        ], $importFields[ImportMilestone::WaitingChangeStatusSppb->getLabel()]);
+
+        $export = $this->exportShipmentFor($company, 'BL-EXP-REVISION');
+        $export->forceFill([
+            'stuffing_date' => '2026-10-21',
+            'peb_npe_check_status' => PebNpeCheckStatus::NotPassed,
+            'peb_npe_check_note' => 'PEB needs correction.',
+            'current_milestone' => ExportMilestone::CheckingPebNpe,
+        ])->save();
+
+        $exportFields = collect($timeline->forShipment($export->refresh()))
+            ->mapWithKeys(fn (ShipmentTimelineEntry $entry): array => [$entry->title => collect($entry->fields)->pluck('value', 'label')->all()]);
+
+        $this->assertSame('21 Oct 2026', $exportFields[ExportMilestone::PickupEmptyContainer->getLabel()]['Stuffing date']);
+        $this->assertSame([
+            'PEB & NPE check' => 'Not passed',
+            'PEB & NPE note' => 'PEB needs correction.',
+        ], $exportFields[ExportMilestone::CheckingPebNpe->getLabel()]);
     }
 
     public function test_container_steps_mark_the_current_milestone_and_hide_future_fields(): void

@@ -7,8 +7,8 @@
  * - Customer section above the tabs, then the milestone stepper on edit.
  * - Shipping Details: the booking-order fields, disabled until their milestone
  *   is reached.
- * - Containers: the pickup/stuffing, AJU number and sailing-date header fields
- *   above the export container repeater; items stay open to distinguish
+ * - Containers: the pickup/stuffing, AJU number, PEB & NPE check and
+ *   sailing-date header fields above the export container repeater; items stay open to distinguish
  *   individual container records.
  * - Notes and Activity log tabs.
  * How to use: Rendered by the export shipment create and edit pages.
@@ -19,6 +19,7 @@
 namespace App\Filament\Resources\ExportShipments\Schemas;
 
 use App\Enums\ExportMilestone;
+use App\Enums\PebNpeCheckStatus;
 use App\Enums\ShipmentMode;
 use App\Filament\Concerns\ContainerFields;
 use App\Filament\Concerns\ShipmentFields;
@@ -107,7 +108,7 @@ class ExportShipmentForm
                                         TextInput::make('pickup_depot_name')
                                             ->label('Pick up depot')
                                             ->maxLength(255),
-                                        DateTimePicker::make('stuffing_date'),
+                                        DatePicker::make('stuffing_date'),
                                         Textarea::make('stuffing_destination')
                                             ->columnSpanFull(),
                                     ], $enum, ExportMilestone::PickupEmptyContainer),
@@ -121,6 +122,19 @@ class ExportShipmentForm
                                             ->label('AJU number')
                                             ->maxLength(100),
                                     ], $enum, ExportMilestone::StuffingPebNpe),
+                                ]),
+                                Grid::make(2)->schema([
+                                    // Step 6 — Checking PEB & NPE. The check either
+                                    // passes or not; the note explains the outcome.
+                                    ...ShipmentFields::gated([
+                                        Select::make('peb_npe_check_status')
+                                            ->label('PEB & NPE check')
+                                            ->options(PebNpeCheckStatus::options()),
+                                        Textarea::make('peb_npe_check_note')
+                                            ->label('PEB & NPE note')
+                                            ->rows(2)
+                                            ->columnSpanFull(),
+                                    ], $enum, ExportMilestone::CheckingPebNpe),
                                 ]),
                                 Grid::make(2)->schema([
                                     // Step 7 — Gate in CY. The vessel schedule is known

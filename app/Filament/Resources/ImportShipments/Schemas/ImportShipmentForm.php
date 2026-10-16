@@ -6,7 +6,8 @@
  * What it does:
  * - Customer section above the tabs, then the milestone stepper on edit.
  * - Shipping Details: one field group per IMPORT.md milestone (document
- *   checking, PIB confirmation, billing/THC/DO data and sailing dates), each
+ *   checking, PIB confirmation, billing/THC/DO data with the DO validity and
+ *   its Extend DO button, sailing dates and the second SPJM response), each
  *   disabled until its milestone is reached.
  * - Containers: the shipment-level cargo fields (description of goods,
  *   packages, HS codes — unlocked with the billing response) and the loading
@@ -26,11 +27,13 @@ use App\Enums\BillingIssuanceStatus;
 use App\Enums\BillingResponse;
 use App\Enums\ImportMilestone;
 use App\Enums\ShipmentMode;
+use App\Enums\SpjmResponse;
 use App\Filament\Concerns\ContainerFields;
 use App\Filament\Concerns\ShipmentFields;
 use App\Models\ImportContainer;
 use App\Models\ImportShipment;
 use App\Models\Role;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
@@ -41,7 +44,10 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 
@@ -124,9 +130,19 @@ class ImportShipmentForm
                                         ...ShipmentFields::gated([
                                             DatePicker::make('departure_date'),
                                         ], $enum, ImportMilestone::WaitingReleaseDo),
-                                        // Step 9 — DO release.
+                                        // Step 9 — DO release: port of discharge plus
+                                        // the DO validity; Extend DO records a later
+                                        // validity date without losing the original.
                                         ...ShipmentFields::gated([
                                             TextInput::make('port_of_discharge'),
+                                            DatePicker::make('do_valid_until')
+                                                ->label('DO valid until')
+                                                ->live()
+                                                ->hintAction(self::extendDoAction()),
+                                            DatePicker::make('do_extended_until')
+                                                ->label('DO extended until')
+                                                ->afterOrEqual('do_valid_until')
+                                                ->visible(fn (Get $get): bool => filled($get('do_extended_until'))),
                                         ], $enum, ImportMilestone::DoRelease),
                                         // Step 10 — Payment billing (arrival time / ETA).
                                         ...ShipmentFields::gated([
@@ -136,8 +152,24 @@ class ImportShipmentForm
                                         // Step 11 — Response billing (SPPB/AP/SPJK/SPJM).
                                         ...ShipmentFields::gated([
                                             Select::make('billing_response')
-                                                ->options(BillingResponse::options()),
+                                                ->options(BillingResponse::options())
+                                                ->live(),
                                         ], $enum, ImportMilestone::ResponseBilling),
+                                        // Step 16 — Waiting change status SPJM to SPPB:
+                                        // the second response that closes the SPJM
+                                        // branch; "Other" is described in free text.
+                                        ...ShipmentFields::gated([
+                                            Select::make('spjm_response')
+                                                ->label('SPJM response')
+                                                ->options(SpjmResponse::options())
+                                                ->live()
+                                                ->visible(fn (Get $get): bool => self::isSpjm($get)),
+                                            TextInput::make('spjm_response_other')
+                                                ->label('SPJM response (other)')
+                                                ->maxLength(255)
+                                                ->required(fn (Get $get): bool => self::isOtherSpjmResponse($get))
+                                                ->visible(fn (Get $get): bool => self::isSpjm($get) && self::isOtherSpjmResponse($get)),
+                                        ], $enum, ImportMilestone::WaitingChangeStatusSppb),
                                     ]),
                             ]),
                         ShipmentFields::containersTab(
@@ -199,6 +231,41 @@ class ImportShipmentForm
                     ]),
                 ShipmentFields::hiddenCurrentMilestone($enum),
             ]);
+    }
+
+    /**
+     * The Extend DO button on "DO valid until": asks for the new validity
+     * date and writes it to `do_extended_until`; the form still needs saving.
+     * Offered once a DO validity exists and Step 9 is reached.
+     */
+    private static function extendDoAction(): Action
+    {
+        $locked = ShipmentFields::locked(ImportMilestone::class, ImportMilestone::DoRelease);
+
+        return Action::make('extendDo')
+            ->label('Extend DO')
+            ->icon(Heroicon::OutlinedCalendarDays)
+            ->visible(fn (Get $schemaGet): bool => ! $locked($schemaGet) && filled($schemaGet('do_valid_until')))
+            ->modalHeading('Extend DO')
+            ->modalSubmitActionLabel('Extend')
+            ->fillForm(fn (Get $schemaGet): array => ['do_extended_until' => $schemaGet('do_extended_until')])
+            ->schema(fn (Get $schemaGet): array => [
+                DatePicker::make('do_extended_until')
+                    ->label('DO extended until')
+                    ->minDate($schemaGet('do_valid_until'))
+                    ->required(),
+            ])
+            ->action(fn (array $data, Set $schemaSet) => $schemaSet('do_extended_until', $data['do_extended_until']));
+    }
+
+    private static function isSpjm(Get $get): bool
+    {
+        return ShipmentFields::enumValue($get('billing_response'), BillingResponse::class) === BillingResponse::Spjm;
+    }
+
+    private static function isOtherSpjmResponse(Get $get): bool
+    {
+        return ShipmentFields::enumValue($get('spjm_response'), SpjmResponse::class) === SpjmResponse::Other;
     }
 
     /**

@@ -5,7 +5,8 @@
  * Responsibility: The import-process shipment header shared by its containers.
  * What it does:
  * - Stores the IMPORT.md fields: document checking, PIB confirmation checklist,
- *   billing/THC/DO data, sailing dates and goods description, plus status and
+ *   billing/THC/DO data (DO validity and its extension, the second SPJM
+ *   response), sailing dates and goods description, plus status and
  *   milestone state.
  * - Serves as the parent for import containers, HS codes, attachments and logs.
  * How to use: `$shipment->containers`, `$shipment->hsCodes`, `$shipment->advanceMilestone()`.
@@ -19,6 +20,7 @@ use App\Enums\BillingResponse;
 use App\Enums\ImportMilestone;
 use App\Enums\ShipmentMode;
 use App\Enums\ShipmentStatus;
+use App\Enums\SpjmResponse;
 use App\Models\Concerns\ActsAsShipment;
 use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -35,7 +37,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'shipping_line', 'vessel_name', 'confirmation_checklist',
     'aju_number', 'voyage_number', 'billing_issuance_status',
     'port_of_loading', 'departure_date', 'port_of_discharge',
-    'eta_at', 'billing_response', 'goods_description',
+    'do_valid_until', 'do_extended_until',
+    'eta_at', 'billing_response', 'spjm_response', 'spjm_response_other', 'goods_description',
     'packages', 'terminal_name', 'loading_date', 'loading_destination',
     'status', 'hidden_from_portal', 'current_milestone', 'completed_at',
 ])]
@@ -52,12 +55,30 @@ class ImportShipment extends Model
     protected static function booted(): void
     {
         static::saving(function (ImportShipment $shipment): void {
+            $shipment->clearStaleSpjmResponse();
+
             if (! $shipment->isDirty('confirmation_checklist')) {
                 return;
             }
 
             $shipment->confirmed_by = $shipment->confirmation_checklist ? auth()->id() : null;
         });
+    }
+
+    /**
+     * The second SPJM response only exists on the SPJM branch, and its free
+     * text only describes an "Other" response. Moving off either drops the
+     * dependent value so a stale answer never resurfaces in the portal.
+     */
+    public function clearStaleSpjmResponse(): void
+    {
+        if ($this->billing_response !== BillingResponse::Spjm) {
+            $this->spjm_response = null;
+        }
+
+        if ($this->spjm_response !== SpjmResponse::Other) {
+            $this->spjm_response_other = null;
+        }
     }
 
     /**
@@ -88,10 +109,13 @@ class ImportShipment extends Model
             'current_milestone' => ImportMilestone::class,
             'billing_issuance_status' => BillingIssuanceStatus::class,
             'billing_response' => BillingResponse::class,
+            'spjm_response' => SpjmResponse::class,
             'confirmation_checklist' => 'boolean',
             'document_received_date' => 'date',
             'departure_date' => 'date',
             'loading_date' => 'date',
+            'do_valid_until' => 'date',
+            'do_extended_until' => 'date',
             'eta_at' => 'datetime',
             'completed_at' => 'datetime',
         ];

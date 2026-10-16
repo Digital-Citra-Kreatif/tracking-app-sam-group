@@ -22,7 +22,7 @@ Shipment mode (option: FCL | LCL | Air Shipment | Break Bulk | FTL | OT)
 Step 3: Pick up empty container at depot
 B/L fields:
 Pick up depot
-Stuffing date (date time)
+Stuffing date (date)
 Stuffing destination
 Container fields:
 Container Number
@@ -49,6 +49,9 @@ Container fields:
 Stuffing status at Factory (option: On Process | Finished)
 
 Step 6: Checking PEB & NPE
+B/L fields:
+PEB & NPE check (option: Passed | Not passed)
+PEB & NPE note (text)
 Container fields:
 Port of loading (default: same value as Port of loading from B/L, step 2)
 Gate in CY at (date time)
