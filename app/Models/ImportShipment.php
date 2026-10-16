@@ -69,14 +69,16 @@ class ImportShipment extends Model
      * The second SPJM response only exists on the SPJM branch, and its free
      * text only describes an "Other" response. Moving off either drops the
      * dependent value so a stale answer never resurfaces in the portal.
+     * Only a value that is actually set gets cleared, so an ordinary save
+     * never writes these columns.
      */
     public function clearStaleSpjmResponse(): void
     {
-        if ($this->billing_response !== BillingResponse::Spjm) {
+        if ($this->billing_response !== BillingResponse::Spjm && $this->spjm_response !== null) {
             $this->spjm_response = null;
         }
 
-        if ($this->spjm_response !== SpjmResponse::Other) {
+        if ($this->spjm_response !== SpjmResponse::Other && $this->spjm_response_other !== null) {
             $this->spjm_response_other = null;
         }
     }

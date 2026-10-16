@@ -697,6 +697,18 @@ class AdminPanelSmokeTest extends TestCase
         $this->assertNull($shipment->refresh()->spjm_response);
     }
 
+    public function test_an_ordinary_import_save_leaves_the_spjm_response_columns_untouched(): void
+    {
+        $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
+        $shipment->forceFill(['billing_response' => BillingResponse::Ap])->save();
+
+        $shipment->update(['vessel_name' => 'MV Revision Check']);
+
+        $this->assertArrayHasKey('vessel_name', $shipment->getChanges());
+        $this->assertArrayNotHasKey('spjm_response', $shipment->getChanges());
+        $this->assertArrayNotHasKey('spjm_response_other', $shipment->getChanges());
+    }
+
     public function test_the_import_form_saves_the_spjm_response_and_requires_text_for_other(): void
     {
         $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
