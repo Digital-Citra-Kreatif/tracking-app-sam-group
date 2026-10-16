@@ -152,8 +152,7 @@ class ImportShipmentForm
                                         // Step 11 — Response billing (SPPB/AP/SPJK/SPJM).
                                         ...ShipmentFields::gated([
                                             Select::make('billing_response')
-                                                ->options(BillingResponse::options())
-                                                ->live(),
+                                                ->options(BillingResponse::options()),
                                         ], $enum, ImportMilestone::ResponseBilling),
                                         // Step 16 — Waiting change status SPJM to SPPB:
                                         // the second response that closes the SPJM
@@ -163,12 +162,12 @@ class ImportShipmentForm
                                                 ->label('SPJM response')
                                                 ->options(SpjmResponse::options())
                                                 ->live()
-                                                ->visible(fn (Get $get): bool => self::isSpjm($get)),
+                                                ->visible(fn (?ImportShipment $record): bool => self::isSpjm($record)),
                                             TextInput::make('spjm_response_other')
                                                 ->label('SPJM response (other)')
                                                 ->maxLength(255)
                                                 ->required(fn (Get $get): bool => self::isOtherSpjmResponse($get))
-                                                ->visible(fn (Get $get): bool => self::isSpjm($get) && self::isOtherSpjmResponse($get)),
+                                                ->visible(fn (Get $get, ?ImportShipment $record): bool => self::isSpjm($record) && self::isOtherSpjmResponse($get)),
                                         ], $enum, ImportMilestone::WaitingChangeStatusSppb),
                                     ]),
                             ]),
@@ -240,12 +239,14 @@ class ImportShipmentForm
      */
     private static function extendDoAction(): Action
     {
-        $locked = ShipmentFields::locked(ImportMilestone::class, ImportMilestone::DoRelease);
-
         return Action::make('extendDo')
             ->label('Extend DO')
             ->icon(Heroicon::OutlinedCalendarDays)
-            ->visible(fn (Get $schemaGet): bool => ! $locked($schemaGet) && filled($schemaGet('do_valid_until')))
+            ->visible(fn (Get $schemaGet): bool => filled($schemaGet('do_valid_until')) && ImportMilestone::unlocked(
+                ShipmentFields::enumValue($schemaGet('billing_response'), BillingResponse::class),
+                ShipmentFields::enumValue($schemaGet('current_milestone'), ImportMilestone::class),
+                ImportMilestone::DoRelease,
+            ))
             ->modalHeading('Extend DO')
             ->modalSubmitActionLabel('Extend')
             ->fillForm(fn (Get $schemaGet): array => ['do_extended_until' => $schemaGet('do_extended_until')])
@@ -258,9 +259,13 @@ class ImportShipmentForm
             ->action(fn (array $data, Set $schemaSet) => $schemaSet('do_extended_until', $data['do_extended_until']));
     }
 
-    private static function isSpjm(Get $get): bool
+    /**
+     * Whether the saved billing response is SPJM: the SPJM steps only exist
+     * once that response is saved, so the second response follows the record.
+     */
+    private static function isSpjm(?ImportShipment $record): bool
     {
-        return ShipmentFields::enumValue($get('billing_response'), BillingResponse::class) === BillingResponse::Spjm;
+        return $record?->billing_response === BillingResponse::Spjm;
     }
 
     private static function isOtherSpjmResponse(Get $get): bool

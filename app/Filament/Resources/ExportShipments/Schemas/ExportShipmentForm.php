@@ -8,8 +8,8 @@
  * - Shipping Details: the booking-order fields, disabled until their milestone
  *   is reached.
  * - Containers: the pickup/stuffing, AJU number, PEB & NPE check and
- *   sailing-date header fields above the export container repeater; items stay open to distinguish
- *   individual container records.
+ *   sailing-date header fields above the export container repeater; items
+ *   stay open to distinguish individual container records.
  * - Notes and Activity log tabs.
  * How to use: Rendered by the export shipment create and edit pages.
  * How to extend: add a field inside the Shipping Details grid and wrap it in

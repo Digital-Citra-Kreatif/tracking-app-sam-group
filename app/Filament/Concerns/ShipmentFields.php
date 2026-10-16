@@ -402,10 +402,9 @@ class ShipmentFields
 
     /**
      * Disabled-until-milestone check. `$prefix` lets container repeater items
-     * read the parent shipment state via '../../'. Public so field actions
-     * (e.g. Extend DO) can follow the same gate as their field.
+     * read the parent shipment state via '../../'.
      */
-    public static function locked(string $milestoneEnum, BackedEnum $required, string $prefix = ''): Closure
+    private static function locked(string $milestoneEnum, BackedEnum $required, string $prefix = ''): Closure
     {
         return function (Get $get) use ($milestoneEnum, $required, $prefix): bool {
             return ! $milestoneEnum::unlocked(
