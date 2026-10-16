@@ -372,6 +372,7 @@ class ShipmentTimeline
                     ['label' => 'Gate out CY', 'value' => $container->gate_out_cy_at],
                     ['label' => 'Driver name', 'value' => $container->driver_name],
                     ['label' => 'No. License', 'value' => $container->license_number],
+                    ['label' => 'Vehicle / Truck Number', 'value' => $container->vehicle_number],
                 ],
                 ImportMilestone::OnTheWayToFactory => [
                     ['label' => 'Tracking position driver', 'value' => $container->tracking_position],
@@ -468,6 +469,10 @@ class ShipmentTimeline
                 ExportMilestone::StuffingPebNpe => [
                     ['label' => 'AJU number', 'value' => $shipment->aju_number],
                 ],
+                ExportMilestone::CheckingPebNpe => [
+                    ['label' => 'PEB & NPE check', 'value' => $shipment->peb_npe_check_status],
+                    ['label' => 'PEB & NPE note', 'value' => $shipment->peb_npe_check_note, 'wide' => true],
+                ],
                 ExportMilestone::GateInCy => [
                     ['label' => 'Departure date', 'value' => $shipment->departure_date],
                     ['label' => 'Arrival time / ETA', 'value' => $shipment->eta_at],
@@ -504,6 +509,8 @@ class ShipmentTimeline
                 ],
                 ImportMilestone::DoRelease => [
                     ['label' => 'Port of discharge', 'value' => $shipment->port_of_discharge],
+                    ['label' => 'DO valid until', 'value' => $shipment->do_valid_until],
+                    ['label' => 'DO extended until', 'value' => $shipment->do_extended_until],
                 ],
                 ImportMilestone::BillingPayment => [
                     ['label' => 'Arrival time / ETA', 'value' => $shipment->eta_at],
@@ -513,6 +520,10 @@ class ShipmentTimeline
                     ['label' => 'Description of goods', 'value' => $shipment->goods_description],
                     ['label' => 'Packages', 'value' => $shipment->packages],
                     ['label' => 'HS codes', 'value' => $this->hsCodeList($shipment)],
+                ],
+                ImportMilestone::WaitingChangeStatusSppb => [
+                    ['label' => 'SPJM response', 'value' => $shipment->spjm_response],
+                    ['label' => 'SPJM response (other)', 'value' => $shipment->spjm_response_other],
                 ],
                 ImportMilestone::ContainerShippingSchedule => [
                     ['label' => 'Terminal name', 'value' => $shipment->terminal_name],

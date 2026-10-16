@@ -41,6 +41,8 @@ Departure date (date)
 Step 9: DO release
 B/L fields:
 Port of discharge
+DO valid until (date)
+DO extended until (date, set with the "Extend DO" button)
 
 Step 10: Payment billing
 B/L fields:
@@ -73,7 +75,10 @@ Step 12: Upload all document (SPJM branch only) -> change status only, no fields
 Step 13: Waiting process bahandle (SPJM branch only) -> change status only, no fields
 Step 14: Payment bahandle (SPJM branch only) -> change status only, no fields
 Step 15: Container inspection (SPJM branch only) No fields -> change status only, no fields
-Step 16: Waiting change status SPJM to SPPB (SPJM branch only) -> change status only, no fields
+Step 16: Waiting change status SPJM to SPPB (SPJM branch only)
+B/L fields:
+SPJM response (option: SPPB | Lab | Other)
+SPJM response (other) (text, only when SPJM response is Other)
 
 Step 17: Container shipping schedule
 B/L fields:
@@ -86,6 +91,7 @@ Container fields:
 Gate out CY (date time)
 Driver name
 No. License
+Vehicle / Truck Number
 
 Step 19: Container on the way factory
 Container fields:

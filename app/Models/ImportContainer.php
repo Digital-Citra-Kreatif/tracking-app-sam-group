@@ -5,7 +5,7 @@
  * Responsibility: A container belonging to one import shipment.
  * What it does:
  * - Tracks the IMPORT.md container data: identity, cargo (description of
- *   goods, packages), gate-out, driver tracking (free-text position plus a
+ *   goods, packages), gate-out (driver, license and vehicle number), driver tracking (free-text position plus a
  *   validated URL), weights, factory loading and depot return.
  * - Carries its own HS codes through the import_container_hs_code pivot,
  *   defaulted from the parent shipment when the container is created.
@@ -33,7 +33,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'import_shipment_id', 'container_number', 'size', 'seal_number',
     'description_of_goods', 'packages',
-    'driver_name', 'license_number', 'gate_out_cy_at',
+    'driver_name', 'license_number', 'vehicle_number', 'gate_out_cy_at',
     'tracking_position', 'tracking_position_url',
     'gross_weight', 'cbm',
     'factory_loading_status',
