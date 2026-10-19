@@ -64,6 +64,8 @@ class ShipmentFields
                 Select::make('company_id')
                     ->label('Customer')
                     ->relationship('company', 'name', modifyQueryUsing: fn (Builder $query): Builder => User::scopeToAssignedCompanies($query))
+                    ->searchable()
+                    ->preload()
                     ->required()
                     // Editable only while creating, or on edit by admin/super-admin.
                     ->hidden(fn (string $operation): bool => $operation === 'edit' && ! auth()->user()?->hasAnyRole(Role::PRIVILEGED)),
@@ -80,6 +82,8 @@ class ShipmentFields
                     ->label('Document received by')
                     // Staff only: customer accounts never receive documents.
                     ->relationship('documentReceivedBy', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->internal())
+                    ->searchable()
+                    ->preload()
                     ->default(auth()->id())
                     ->helperText('Only admins can change this.')
                     ->disabled(fn (): bool => ! auth()->user()?->hasAnyRole(Role::PRIVILEGED))

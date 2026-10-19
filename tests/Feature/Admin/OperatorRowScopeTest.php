@@ -15,6 +15,7 @@ namespace Tests\Feature\Admin;
 
 use App\Filament\Resources\ActivityLogs\Pages\ListActivityLogs;
 use App\Filament\Resources\ExportContainers\Pages\ListExportContainers;
+use App\Filament\Resources\ExportShipments\Pages\CreateExportShipment;
 use App\Filament\Resources\ExportShipments\Pages\EditExportShipment;
 use App\Filament\Resources\ExportShipments\Pages\ListExportShipments;
 use App\Filament\Resources\ImportShipments\Pages\ListImportShipments;
@@ -24,6 +25,7 @@ use App\Models\ExportContainer;
 use App\Models\ExportShipment;
 use App\Models\ImportShipment;
 use App\Models\User;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -161,5 +163,20 @@ class OperatorRowScopeTest extends TestCase
             Company::query()->count(),
             User::scopeToAssignedCompanies(Company::query())->count(),
         );
+    }
+
+    public function test_operator_customer_search_only_finds_assigned_companies(): void
+    {
+        $this->actingAs($this->operator);
+
+        $assigned = Company::query()->where('code', 'NUS')->firstOrFail();
+        $unassigned = Company::query()->whereNotIn('code', ['NUS', 'SNI'])->firstOrFail();
+
+        Livewire::test(CreateExportShipment::class)
+            ->assertFormFieldExists('company_id', function (Select $field) use ($assigned, $unassigned): bool {
+                return $field->isSearchable()
+                    && array_key_exists($assigned->getKey(), $field->getSearchResults($assigned->name))
+                    && $field->getSearchResults($unassigned->name) === [];
+            });
     }
 }
