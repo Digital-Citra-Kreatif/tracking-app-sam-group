@@ -80,11 +80,13 @@ class UsersTable
                 SelectFilter::make('roles')
                     ->relationship('roles', 'name')
                     ->multiple()
-                    ->preload(),
+                    ->preload()
+                    ->searchable(),
                 SelectFilter::make('companies')
                     ->relationship('companies', 'name')
                     ->multiple()
-                    ->preload(),
+                    ->preload()
+                    ->searchable(),
                 TernaryFilter::make('is_active'),
                 TrashedFilter::make(),
             ])
