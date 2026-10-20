@@ -24,6 +24,7 @@ use App\Enums\SpjmResponse;
 use App\Models\Concerns\ActsAsShipment;
 use App\Models\Concerns\HasNotes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -90,6 +91,33 @@ class ImportShipment extends Model
     public function latestCustomsResponse(): SpjmResponse|BillingResponse|null
     {
         return $this->spjm_response ?? $this->billing_response;
+    }
+
+    /**
+     * Every value latestCustomsResponse() can show, for the list filter.
+     * SPPB exists in both enums with the same value, so it appears once.
+     *
+     * @return array<string, string>
+     */
+    public static function latestCustomsResponseOptions(): array
+    {
+        return BillingResponse::options() + SpjmResponse::options();
+    }
+
+    /**
+     * Shipments whose latestCustomsResponse() has the given value: the SPJM
+     * response when recorded, otherwise the billing response.
+     *
+     * @param  Builder<ImportShipment>  $query
+     * @return Builder<ImportShipment>
+     */
+    public function scopeWhereLatestCustomsResponse(Builder $query, string $value): Builder
+    {
+        return $query->where(fn (Builder $query): Builder => $query
+            ->where('spjm_response', $value)
+            ->orWhere(fn (Builder $query): Builder => $query
+                ->whereNull('spjm_response')
+                ->where('billing_response', $value)));
     }
 
     /**

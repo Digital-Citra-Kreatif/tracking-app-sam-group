@@ -761,6 +761,30 @@ class AdminPanelSmokeTest extends TestCase
         $this->assertSame('success', $spjmSppb->latestCustomsResponseColor());
     }
 
+    public function test_the_import_list_response_filter_matches_the_latest_customs_response(): void
+    {
+        ImportShipment::query()->update(['billing_response' => null, 'spjm_response' => null]);
+        [$sppb, $spjmPending, $spjmOther, $spjmSppb] = ImportShipment::query()->orderBy('id')->take(4)->get()->all();
+
+        $sppb->forceFill(['billing_response' => BillingResponse::Sppb])->save();
+        $spjmPending->forceFill(['billing_response' => BillingResponse::Spjm])->save();
+        $spjmOther->forceFill(['billing_response' => BillingResponse::Spjm, 'spjm_response' => SpjmResponse::Other, 'spjm_response_other' => 'Lab check'])->save();
+        $spjmSppb->forceFill(['billing_response' => BillingResponse::Spjm, 'spjm_response' => SpjmResponse::Sppb])->save();
+
+        $this->actingAs($this->admin());
+
+        Livewire::test(ListImportShipments::class)
+            ->filterTable('billing_response', 'SPPB')
+            ->assertCanSeeTableRecords([$sppb, $spjmSppb])
+            ->assertCountTableRecords(2)
+            ->filterTable('billing_response', 'SPJM')
+            ->assertCanSeeTableRecords([$spjmPending])
+            ->assertCountTableRecords(1)
+            ->filterTable('billing_response', 'OTHER')
+            ->assertCanSeeTableRecords([$spjmOther])
+            ->assertCountTableRecords(1);
+    }
+
     public function test_the_import_form_saves_the_spjm_response_and_requires_text_for_other(): void
     {
         $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();

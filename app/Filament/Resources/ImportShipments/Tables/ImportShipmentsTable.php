@@ -6,7 +6,8 @@
  * What it does:
  * - Shows the identifying and status columns plus the latest customs
  *   response (the SPJM response once recorded, else the billing response;
- *   green for SPPB, red otherwise), with filters for status, response, company and created date,
+ *   green for SPPB, red otherwise), with filters for status, response (the
+ *   same latest customs response), company and created date,
  *   plus a soft-delete filter.
  * - Lists each container number as a wrapping badge linking to that container's edit page.
  * - Offers a CSV header action, restricted to admin/super_admin via
@@ -19,7 +20,6 @@
 
 namespace App\Filament\Resources\ImportShipments\Tables;
 
-use App\Enums\BillingResponse;
 use App\Enums\ShipmentStatus;
 use App\Filament\Concerns\DateFilters;
 use App\Filament\Concerns\PrunableTableHeaderAction;
@@ -118,7 +118,11 @@ class ImportShipmentsTable
                 SelectFilter::make('status')
                     ->options(ShipmentStatus::options()),
                 SelectFilter::make('billing_response')
-                    ->options(BillingResponse::options()),
+                    ->label('Response')
+                    ->options(ImportShipment::latestCustomsResponseOptions())
+                    ->query(fn (Builder $query, array $data): Builder => blank($data['value'] ?? null)
+                        ? $query
+                        : $query->whereLatestCustomsResponse($data['value'])),
                 SelectFilter::make('company')
                     ->relationship('company', 'name', modifyQueryUsing: fn (Builder $query): Builder => User::scopeToAssignedCompanies($query))
                     ->searchable()
