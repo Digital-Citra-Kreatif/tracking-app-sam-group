@@ -760,11 +760,13 @@ class PortalTest extends TestCase
         $timeline = app(ShipmentTimeline::class);
 
         $import = $this->importShipmentFor($company, 'BL-IMP-REVISION');
+        // Save SPJM first: entering SPJM in the same save as a jump past the
+        // branch point would pull the milestone back to Response billing.
+        $import->forceFill(['billing_response' => BillingResponse::Spjm])->save();
         $import->forceFill([
             'port_of_discharge' => 'Surabaya',
             'do_valid_until' => '2026-10-20',
             'do_extended_until' => '2026-11-05',
-            'billing_response' => BillingResponse::Spjm,
             'spjm_response' => SpjmResponse::Other,
             'spjm_response_other' => 'Quarantine check',
             'current_milestone' => ImportMilestone::WaitingChangeStatusSppb,

@@ -738,13 +738,36 @@ class AdminPanelSmokeTest extends TestCase
         $this->assertArrayNotHasKey('spjm_response_other', $shipment->getChanges());
     }
 
+    public function test_the_import_list_response_prefers_the_spjm_response_and_is_green_only_for_sppb(): void
+    {
+        [$sppb, $ap, $spjmOther, $spjmSppb] = ImportShipment::query()->orderBy('id')->take(4)->get()->all();
+
+        $sppb->forceFill(['billing_response' => BillingResponse::Sppb])->save();
+        $ap->forceFill(['billing_response' => BillingResponse::Ap])->save();
+        $spjmOther->forceFill(['billing_response' => BillingResponse::Spjm, 'spjm_response' => SpjmResponse::Other, 'spjm_response_other' => 'Lab check'])->save();
+        $spjmSppb->forceFill(['billing_response' => BillingResponse::Spjm, 'spjm_response' => SpjmResponse::Sppb])->save();
+
+        $this->actingAs($this->admin());
+
+        Livewire::test(ListImportShipments::class)
+            ->assertTableColumnStateSet('billing_response', 'SPPB', $sppb)
+            ->assertTableColumnStateSet('billing_response', 'AP', $ap)
+            ->assertTableColumnStateSet('billing_response', 'Other', $spjmOther)
+            ->assertTableColumnStateSet('billing_response', 'SPPB', $spjmSppb);
+
+        $this->assertSame('success', $sppb->latestCustomsResponseColor());
+        $this->assertSame('danger', $ap->latestCustomsResponseColor());
+        $this->assertSame('danger', $spjmOther->latestCustomsResponseColor());
+        $this->assertSame('success', $spjmSppb->latestCustomsResponseColor());
+    }
+
     public function test_the_import_form_saves_the_spjm_response_and_requires_text_for_other(): void
     {
         $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
-        $shipment->forceFill([
-            'billing_response' => BillingResponse::Spjm,
-            'current_milestone' => ImportMilestone::WaitingChangeStatusSppb,
-        ])->save();
+        // Save SPJM first: entering SPJM in the same save as a jump past the
+        // branch point would pull the milestone back to Response billing.
+        $shipment->forceFill(['billing_response' => BillingResponse::Spjm])->save();
+        $shipment->forceFill(['current_milestone' => ImportMilestone::WaitingChangeStatusSppb])->save();
 
         $this->actingAs($this->admin());
 
@@ -774,6 +797,9 @@ class AdminPanelSmokeTest extends TestCase
         Livewire::test(EditImportShipment::class, ['record' => $shipment->getRouteKey()])
             ->callAction(TestAction::make('extendDo')->schemaComponent('do_valid_until'), ['do_extended_until' => '2026-10-15'])
             ->assertHasActionErrors(['do_extended_until'])
+            // The failed attempt keeps the modal open; close it so the retry
+            // resolves the action on the form again, not inside the modal.
+            ->unmountAction()
             ->callAction(TestAction::make('extendDo')->schemaComponent('do_valid_until'), ['do_extended_until' => '2026-11-05'])
             ->assertHasNoActionErrors()
             ->call('save')

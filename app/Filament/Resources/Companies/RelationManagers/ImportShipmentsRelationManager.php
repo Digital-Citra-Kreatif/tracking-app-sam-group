@@ -57,6 +57,8 @@ class ImportShipmentsRelationManager extends RelationManager
                 TextColumn::make('billing_response')
                     ->label('Response')
                     ->badge()
+                    ->state(fn (ImportShipment $record): ?string => $record->latestCustomsResponse()?->label())
+                    ->color(fn (ImportShipment $record): string => $record->latestCustomsResponseColor())
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('containers.container_number')

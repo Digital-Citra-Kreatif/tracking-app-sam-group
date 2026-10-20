@@ -201,17 +201,19 @@ class NotesPanelTest extends TestCase
         $company = $shipment->company;
         $user = User::query()->where('email', 'customer@example.com')->firstOrFail();
 
+        // Shipment notes are shown in the customer portal, so that composer
+        // says so; every other target keeps the internal wording.
         $pages = [
-            ExportShipmentResource::getUrl('edit', ['record' => $shipment]),
-            ExportContainerResource::getUrl('edit', ['record' => $container]),
-            CompanyResource::getUrl('edit', ['record' => $company]),
-            UserResource::getUrl('edit', ['record' => $user]),
+            ExportShipmentResource::getUrl('edit', ['record' => $shipment]) => 'Notes on this shipment are visible to the customer in the portal.',
+            ExportContainerResource::getUrl('edit', ['record' => $container]) => 'Add a note for your team',
+            CompanyResource::getUrl('edit', ['record' => $company]) => 'Add a note for your team',
+            UserResource::getUrl('edit', ['record' => $user]) => 'Add a note for your team',
         ];
 
-        foreach ($pages as $url) {
+        foreach ($pages as $url => $composerText) {
             $this->get($url)
                 ->assertOk()
-                ->assertSee('Add a note for your team');
+                ->assertSee($composerText);
         }
     }
 
