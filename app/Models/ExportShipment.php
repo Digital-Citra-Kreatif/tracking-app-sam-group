@@ -14,7 +14,7 @@
 namespace App\Models;
 
 use App\Enums\ExportMilestone;
-use App\Enums\PebNpeCheckStatus;
+use App\Enums\PebResponse;
 use App\Enums\ShipmentMode;
 use App\Enums\ShipmentStatus;
 use App\Models\Concerns\ActsAsShipment;
@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'bl_number', 'shipment_mode', 'company_id', 'company_name_snapshot',
     'document_received_date', 'document_received_by',
-    'aju_number', 'peb_npe_check_status', 'peb_npe_check_note', 'do_number', 'shipping_line', 'vessel_name',
+    'aju_number', 'peb_response', 'peb_response_other', 'do_number', 'shipping_line', 'vessel_name',
     'voyage_number', 'port_of_loading', 'port_of_discharge', 'depot_closing_at', 'cy_closing_at',
     'pickup_depot_name', 'stuffing_date', 'stuffing_destination',
     'departure_date', 'eta_at',
@@ -38,6 +38,28 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ExportShipment extends Model
 {
     use ActsAsShipment, HasFactory, HasNotes, SoftDeletes;
+
+    /**
+     * Drops a stale PEB response description on every save path.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (ExportShipment $shipment): void {
+            $shipment->clearStalePebResponseOther();
+        });
+    }
+
+    /**
+     * The free-text PEB response only describes an "Other" response, so
+     * moving off Other drops it. Only a value that is actually set gets
+     * cleared, so an ordinary save never writes the column.
+     */
+    public function clearStalePebResponseOther(): void
+    {
+        if ($this->peb_response !== PebResponse::Other && $this->peb_response_other !== null) {
+            $this->peb_response_other = null;
+        }
+    }
 
     /**
      * @return class-string<ExportMilestone>
@@ -69,7 +91,7 @@ class ExportShipment extends Model
             'depot_closing_at' => 'datetime',
             'cy_closing_at' => 'datetime',
             'stuffing_date' => 'date',
-            'peb_npe_check_status' => PebNpeCheckStatus::class,
+            'peb_response' => PebResponse::class,
             'departure_date' => 'date',
             'eta_at' => 'datetime',
             'completed_at' => 'datetime',

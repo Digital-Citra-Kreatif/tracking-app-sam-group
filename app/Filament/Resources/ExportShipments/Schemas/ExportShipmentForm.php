@@ -7,7 +7,7 @@
  * - Customer section above the tabs, then the milestone stepper on edit.
  * - Shipping Details: the booking-order fields, disabled until their milestone
  *   is reached.
- * - Containers: the pickup/stuffing, AJU number, PEB & NPE check and
+ * - Containers: the pickup/stuffing, AJU number, PEB response and
  *   sailing-date header fields above the export container repeater; items
  *   stay open to distinguish individual container records.
  * - Notes and Activity log tabs.
@@ -19,7 +19,7 @@
 namespace App\Filament\Resources\ExportShipments\Schemas;
 
 use App\Enums\ExportMilestone;
-use App\Enums\PebNpeCheckStatus;
+use App\Enums\PebResponse;
 use App\Enums\ShipmentMode;
 use App\Filament\Concerns\ContainerFields;
 use App\Filament\Concerns\ShipmentFields;
@@ -124,16 +124,20 @@ class ExportShipmentForm
                                     ], $enum, ExportMilestone::StuffingPebNpe),
                                 ]),
                                 Grid::make(2)->schema([
-                                    // Step 6 — Checking PEB & NPE. The check either
-                                    // passes or not; the note explains the outcome.
+                                    // Step 6 — Checking PEB & NPE. The PEB response
+                                    // (NPE / PPB (SPJM) / Other); "Other" is
+                                    // described in free text.
                                     ...ShipmentFields::gated([
-                                        Select::make('peb_npe_check_status')
-                                            ->label('PEB & NPE check')
-                                            ->options(PebNpeCheckStatus::options()),
-                                        Textarea::make('peb_npe_check_note')
-                                            ->label('PEB & NPE note')
+                                        Select::make('peb_response')
+                                            ->label('PEB response')
+                                            ->options(PebResponse::options())
+                                            ->live(),
+                                        Textarea::make('peb_response_other')
+                                            ->label('PEB response (other)')
                                             ->rows(2)
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->required(fn (Get $get): bool => self::isOtherPebResponse($get))
+                                            ->visible(fn (Get $get): bool => self::isOtherPebResponse($get)),
                                     ], $enum, ExportMilestone::CheckingPebNpe),
                                 ]),
                                 Grid::make(2)->schema([
@@ -154,5 +158,10 @@ class ExportShipmentForm
                     ]),
                 ShipmentFields::hiddenCurrentMilestone($enum),
             ]);
+    }
+
+    private static function isOtherPebResponse(Get $get): bool
+    {
+        return ShipmentFields::enumValue($get('peb_response'), PebResponse::class) === PebResponse::Other;
     }
 }
