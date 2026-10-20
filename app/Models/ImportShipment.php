@@ -84,6 +84,24 @@ class ImportShipment extends Model
     }
 
     /**
+     * The latest customs response: the second SPJM response once recorded,
+     * otherwise the billing response.
+     */
+    public function latestCustomsResponse(): SpjmResponse|BillingResponse|null
+    {
+        return $this->spjm_response ?? $this->billing_response;
+    }
+
+    /**
+     * Badge color for latestCustomsResponse(): green once cleared (SPPB),
+     * red for every other response.
+     */
+    public function latestCustomsResponseColor(): string
+    {
+        return in_array($this->latestCustomsResponse(), [BillingResponse::Sppb, SpjmResponse::Sppb], true) ? 'success' : 'danger';
+    }
+
+    /**
      * @return class-string<ImportMilestone>
      */
     public static function milestoneEnum(): string

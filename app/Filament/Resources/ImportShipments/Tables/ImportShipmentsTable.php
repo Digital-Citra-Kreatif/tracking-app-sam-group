@@ -4,8 +4,9 @@
  * File: app/Filament/Resources/ImportShipments/Tables/ImportShipmentsTable.php
  * Responsibility: Admin list of import shipments.
  * What it does:
- * - Shows the identifying and status columns plus the customs billing
- *   response, with filters for status, response, company and created date,
+ * - Shows the identifying and status columns plus the latest customs
+ *   response (the SPJM response once recorded, else the billing response;
+ *   green for SPPB, red otherwise), with filters for status, response, company and created date,
  *   plus a soft-delete filter.
  * - Lists each container number as a wrapping badge linking to that container's edit page.
  * - Offers a CSV header action, restricted to admin/super_admin via
@@ -70,7 +71,8 @@ class ImportShipmentsTable
                 TextColumn::make('billing_response')
                     ->label('Response')
                     ->badge()
-                    ->color(fn (BillingResponse $state): string => $state->color())
+                    ->state(fn (ImportShipment $record): ?string => $record->latestCustomsResponse()?->label())
+                    ->color(fn (ImportShipment $record): string => $record->latestCustomsResponseColor())
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('containers.container_number')
