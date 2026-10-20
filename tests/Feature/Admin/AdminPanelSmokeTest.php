@@ -610,6 +610,35 @@ class AdminPanelSmokeTest extends TestCase
         $this->assertSame(ImportMilestone::ResponseBilling, $shipment->refresh()->current_milestone);
     }
 
+    public function test_billing_response_can_leave_spjm_while_on_an_spjm_only_step(): void
+    {
+        $admin = $this->admin();
+
+        $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
+        $shipment->forceFill([
+            'billing_response' => BillingResponse::Spjm,
+            'spjm_response' => SpjmResponse::Other,
+            'spjm_response_other' => 'Awaiting customs note',
+            'current_milestone' => ImportMilestone::WaitingChangeStatusSppb,
+        ])->save();
+
+        $this->actingAs($admin);
+
+        // The SPJM-only step is not in the SPPB sequence; the billing response
+        // must stay editable so the switch is actually saved.
+        Livewire::test(EditImportShipment::class, ['record' => $shipment->getRouteKey()])
+            ->set('data.billing_response', BillingResponse::Sppb->value)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $shipment->refresh();
+
+        $this->assertSame(BillingResponse::Sppb, $shipment->billing_response);
+        $this->assertNull($shipment->spjm_response);
+        $this->assertNull($shipment->spjm_response_other);
+        $this->assertSame(ImportMilestone::ResponseBilling, $shipment->current_milestone);
+    }
+
     public function test_milestone_moves_wait_for_an_unsaved_billing_response(): void
     {
         $admin = $this->admin();
