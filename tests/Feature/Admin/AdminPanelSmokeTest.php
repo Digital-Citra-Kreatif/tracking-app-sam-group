@@ -18,7 +18,7 @@ namespace Tests\Feature\Admin;
 use App\Enums\BillingResponse;
 use App\Enums\ExportMilestone;
 use App\Enums\ImportMilestone;
-use App\Enums\PebNpeCheckStatus;
+use App\Enums\PebResponse;
 use App\Enums\ShipmentStatus;
 use App\Enums\SpjmResponse;
 use App\Filament\Concerns\ShipmentFields;
@@ -784,7 +784,7 @@ class AdminPanelSmokeTest extends TestCase
         $this->assertSame('2026-11-05', $shipment->do_extended_until->toDateString());
     }
 
-    public function test_the_export_form_saves_the_peb_npe_check_outcome_and_note(): void
+    public function test_the_export_form_saves_the_peb_response_and_its_other_description(): void
     {
         $export = ExportShipment::query()->where('bl_number', 'BL-EXP-0001')->firstOrFail();
         $export->update(['current_milestone' => ExportMilestone::CheckingPebNpe]);
@@ -794,16 +794,23 @@ class AdminPanelSmokeTest extends TestCase
         Livewire::test(EditExportShipment::class, ['record' => $export->getRouteKey()])
             ->fillForm([
                 'stuffing_date' => '2026-10-21',
-                'peb_npe_check_status' => PebNpeCheckStatus::NotPassed->value,
-                'peb_npe_check_note' => 'HS code on the PEB does not match the invoice.',
+                'peb_response' => PebResponse::Other->value,
+                'peb_response_other' => '',
             ])
+            ->call('save')
+            ->assertHasFormErrors(['peb_response_other' => 'required'])
+            ->fillForm(['peb_response_other' => 'HS code on the PEB does not match the invoice.'])
             ->call('save')
             ->assertHasNoFormErrors();
 
         $export->refresh();
         $this->assertSame('2026-10-21', $export->stuffing_date->toDateString());
-        $this->assertSame(PebNpeCheckStatus::NotPassed, $export->peb_npe_check_status);
-        $this->assertSame('HS code on the PEB does not match the invoice.', $export->peb_npe_check_note);
+        $this->assertSame(PebResponse::Other, $export->peb_response);
+        $this->assertSame('HS code on the PEB does not match the invoice.', $export->peb_response_other);
+
+        // Moving off Other drops the description.
+        $export->update(['peb_response' => PebResponse::Npe]);
+        $this->assertNull($export->refresh()->peb_response_other);
     }
 
     public function test_a_container_added_before_stuffing_saves_again_after_advancing(): void

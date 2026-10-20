@@ -88,7 +88,7 @@ class TableExportColumns
             ...self::fields([
                 'id', 'bl_number', 'shipment_mode', 'company_id', 'company_name_snapshot',
                 'document_received_date', 'document_received_by',
-                'aju_number', 'peb_npe_check_status', 'peb_npe_check_note',
+                'aju_number', 'peb_response', 'peb_response_other',
                 'do_number', 'shipping_line', 'vessel_name', 'voyage_number',
                 'port_of_loading', 'port_of_discharge', 'depot_closing_at', 'cy_closing_at',
                 'pickup_depot_name', 'stuffing_date', 'stuffing_destination',

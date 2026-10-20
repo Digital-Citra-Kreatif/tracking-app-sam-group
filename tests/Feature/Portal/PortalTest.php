@@ -21,7 +21,7 @@ use App\Enums\BillingResponse;
 use App\Enums\ContainerStatus;
 use App\Enums\ExportMilestone;
 use App\Enums\ImportMilestone;
-use App\Enums\PebNpeCheckStatus;
+use App\Enums\PebResponse;
 use App\Enums\ShipmentStatus;
 use App\Enums\SpjmResponse;
 use App\Livewire\Customer\Dashboard;
@@ -786,8 +786,8 @@ class PortalTest extends TestCase
         $export = $this->exportShipmentFor($company, 'BL-EXP-REVISION');
         $export->forceFill([
             'stuffing_date' => '2026-10-21',
-            'peb_npe_check_status' => PebNpeCheckStatus::NotPassed,
-            'peb_npe_check_note' => 'PEB needs correction.',
+            'peb_response' => PebResponse::Other,
+            'peb_response_other' => 'PEB needs correction.',
             'current_milestone' => ExportMilestone::CheckingPebNpe,
         ])->save();
 
@@ -796,8 +796,8 @@ class PortalTest extends TestCase
 
         $this->assertSame('21 Oct 2026', $exportFields[ExportMilestone::PickupEmptyContainer->getLabel()]['Stuffing date']);
         $this->assertSame([
-            'PEB & NPE check' => 'Not passed',
-            'PEB & NPE note' => 'PEB needs correction.',
+            'PEB response' => 'Other',
+            'PEB response (other)' => 'PEB needs correction.',
         ], $exportFields[ExportMilestone::CheckingPebNpe->getLabel()]);
     }
 

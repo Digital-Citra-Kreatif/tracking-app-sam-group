@@ -27,6 +27,7 @@ namespace App\Services;
 use App\Enums\ContainerStatus;
 use App\Enums\ExportMilestone;
 use App\Enums\ImportMilestone;
+use App\Enums\PebResponse;
 use App\Models\ActivityLog;
 use App\Models\ExportContainer;
 use App\Models\ExportShipment;
@@ -470,8 +471,8 @@ class ShipmentTimeline
                     ['label' => 'AJU number', 'value' => $shipment->aju_number],
                 ],
                 ExportMilestone::CheckingPebNpe => [
-                    ['label' => 'PEB & NPE check', 'value' => $shipment->peb_npe_check_status],
-                    ['label' => 'PEB & NPE note', 'value' => $shipment->peb_npe_check_note, 'wide' => true],
+                    ['label' => 'PEB response', 'value' => $shipment->peb_response],
+                    ['label' => 'PEB response (other)', 'value' => $shipment->peb_response === PebResponse::Other ? $shipment->peb_response_other : null, 'wide' => true],
                 ],
                 ExportMilestone::GateInCy => [
                     ['label' => 'Departure date', 'value' => $shipment->departure_date],
