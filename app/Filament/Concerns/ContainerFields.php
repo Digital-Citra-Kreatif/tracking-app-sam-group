@@ -149,8 +149,9 @@ class ContainerFields
     }
 
     /**
-     * Import: driver name, No. license and vehicle / truck number for the
-     * gate-out delivery, matching the export driver group.
+     * Import: driver name, vehicle / truck number and driver license number
+     * for the gate-out delivery, in the same order and labels as the export
+     * driver group.
      *
      * @return list<Field>
      */
@@ -159,11 +160,11 @@ class ContainerFields
         return [
             TextInput::make('driver_name')
                 ->maxLength(255),
-            TextInput::make('license_number')
-                ->label('No. License')
-                ->maxLength(100),
             TextInput::make('vehicle_number')
                 ->label('Vehicle / Truck Number')
+                ->maxLength(100),
+            TextInput::make('license_number')
+                ->label('Driver License Number')
                 ->maxLength(100),
         ];
     }

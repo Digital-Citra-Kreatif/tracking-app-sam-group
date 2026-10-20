@@ -371,8 +371,8 @@ class ShipmentTimeline
                 ImportMilestone::GateOutCy => [
                     ['label' => 'Gate out CY', 'value' => $container->gate_out_cy_at],
                     ['label' => 'Driver name', 'value' => $container->driver_name],
-                    ['label' => 'No. License', 'value' => $container->license_number],
                     ['label' => 'Vehicle / Truck Number', 'value' => $container->vehicle_number],
+                    ['label' => 'Driver License Number', 'value' => $container->license_number],
                 ],
                 ImportMilestone::OnTheWayToFactory => [
                     ['label' => 'Tracking position driver', 'value' => $container->tracking_position],

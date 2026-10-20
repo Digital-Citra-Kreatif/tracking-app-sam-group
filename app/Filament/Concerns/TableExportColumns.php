@@ -159,7 +159,7 @@ class TableExportColumns
             ...self::fields([
                 'id', 'import_shipment_id', 'container_number', 'size', 'seal_number',
                 'description_of_goods', 'packages',
-                'driver_name', 'license_number', 'vehicle_number', 'gate_out_cy_at',
+                'driver_name', 'vehicle_number', 'license_number', 'gate_out_cy_at',
                 'tracking_position', 'tracking_position_url',
                 'gross_weight', 'cbm',
                 'factory_loading_status',
