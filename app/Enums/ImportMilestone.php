@@ -133,20 +133,22 @@ enum ImportMilestone: string implements HasLabel
     /**
      * Whether a shipment at `$current` may edit fields belonging to
      * `$required`. A null current means the shipment sits at the start; a
-     * required milestone outside the sequence stays unlocked.
+     * required milestone outside the sequence stays unlocked. Positions are
+     * compared on the full sequence, so a shipment still sitting on an
+     * SPJM-only step while the form switches the response off SPJM keeps
+     * the fields it already reached (notably the billing response itself)
+     * editable and saved.
      */
     public static function unlocked(?BillingResponse $response, ?self $current, self $required): bool
     {
-        $sequence = self::sequence($response);
-        $requiredIndex = array_search($required, $sequence, true);
-
-        if ($requiredIndex === false) {
+        if (! in_array($required, self::sequence($response), true)) {
             return true;
         }
 
-        $currentIndex = $current ? array_search($current, $sequence, true) : 0;
+        $fullSequence = self::sequence(BillingResponse::Spjm);
+        $currentIndex = $current ? array_search($current, $fullSequence, true) : 0;
 
-        return $currentIndex !== false && $currentIndex >= $requiredIndex;
+        return $currentIndex >= array_search($required, $fullSequence, true);
     }
 
     /**
