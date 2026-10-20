@@ -13,7 +13,6 @@
 
 namespace App\Filament\Resources\Companies\RelationManagers;
 
-use App\Enums\BillingResponse;
 use App\Enums\ShipmentStatus;
 use App\Filament\Concerns\DateFilters;
 use App\Filament\Resources\ImportContainers\ImportContainerResource;
@@ -103,7 +102,11 @@ class ImportShipmentsRelationManager extends RelationManager
                 SelectFilter::make('status')
                     ->options(ShipmentStatus::options()),
                 SelectFilter::make('billing_response')
-                    ->options(BillingResponse::options()),
+                    ->label('Response')
+                    ->options(ImportShipment::latestCustomsResponseOptions())
+                    ->query(fn (Builder $query, array $data): Builder => blank($data['value'] ?? null)
+                        ? $query
+                        : $query->whereLatestCustomsResponse($data['value'])),
                 ...DateFilters::make(ImportShipment::class),
                 TrashedFilter::make(),
             ])
