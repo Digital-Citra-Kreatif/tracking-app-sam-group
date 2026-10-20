@@ -741,10 +741,10 @@ class AdminPanelSmokeTest extends TestCase
     public function test_the_import_form_saves_the_spjm_response_and_requires_text_for_other(): void
     {
         $shipment = ImportShipment::query()->where('bl_number', 'BL-IMP-0012')->firstOrFail();
-        $shipment->forceFill([
-            'billing_response' => BillingResponse::Spjm,
-            'current_milestone' => ImportMilestone::WaitingChangeStatusSppb,
-        ])->save();
+        // Save SPJM first: entering SPJM in the same save as a jump past the
+        // branch point would pull the milestone back to Response billing.
+        $shipment->forceFill(['billing_response' => BillingResponse::Spjm])->save();
+        $shipment->forceFill(['current_milestone' => ImportMilestone::WaitingChangeStatusSppb])->save();
 
         $this->actingAs($this->admin());
 
