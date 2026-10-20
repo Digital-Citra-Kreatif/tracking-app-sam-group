@@ -723,7 +723,7 @@ class PortalTest extends TestCase
         $importPage = Livewire::test(ImportShipmentDetail::class, ['importShipment' => $importShipment->getKey()]);
         foreach ([
             '40 ft', 'SEAL-IMP-22', '1020.500', 'Description of goods',
-            'Driver name', 'Rina Driver', 'No. License', 'B 1234 ABC', 'Vehicle / Truck Number', 'B 9911 TRK',
+            'Driver name', 'Rina Driver', 'Vehicle / Truck Number', 'B 9911 TRK', 'Driver License Number', 'B 1234 ABC',
             'Gate out CY', 'Tracking position driver',
             'Bekasi', 'Tracking position (url)', 'Open tracking link',
             'Loading in factory status', 'Finished', 'Return depot name', 'Jakarta Return Depot', 'Return date',
