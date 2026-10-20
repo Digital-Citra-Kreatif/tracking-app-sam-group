@@ -1,6 +1,7 @@
 {{-- File: resources/views/livewire/notes-panel.blade.php
      Responsibility: Add form plus newest-first notes list for one record.
-     What it does: shows author and time per note; edit/delete only on your own.
+     What it does: shows author and time per note; edit/delete only on your own;
+       on shipments it warns that notes are visible in the customer portal.
      How to use: rendered by App\Livewire\NotesPanel.
      How to extend: keep markup in sync with the NotesPanel properties. --}}
 <div class="notes-panel">
@@ -11,9 +12,13 @@
                     class="fi-input notes-panel-textarea"
                     rows="4"
                     wire:model="body"
-                    placeholder="Add a note for your team…"
+                    placeholder="{{ $isVisibleInPortal ? 'Add a note — the customer sees it in the portal…' : 'Add a note for your team…' }}"
                 ></textarea>
             </x-filament::input.wrapper>
+
+            @if ($isVisibleInPortal)
+                <p class="text-xs text-gray-500 dark:text-gray-400">Notes on this shipment are visible to the customer in the portal.</p>
+            @endif
 
             @error('body')
                 <p class="text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p>

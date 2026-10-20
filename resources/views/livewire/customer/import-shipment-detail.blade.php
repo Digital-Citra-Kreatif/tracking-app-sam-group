@@ -2,7 +2,7 @@
      Responsibility: Customer view of one import shipment, its journey, containers and draft PIB.
      What it does: shows shipment facts, the draft-PIB confirmation actions
        (only once the office waits at the WaitingConfirmation milestone), the
-       customer's own notes, the journey timeline and the sailing + containers card.
+       shipment notes, the journey timeline and the sailing + containers card.
      How to use: rendered by App\Livewire\Customer\ImportShipmentDetail.
      How to extend: add customer-visible fields as they are published. --}}
 <div>
@@ -23,6 +23,8 @@
     @endif
 
     @include('livewire.customer.partials.shipment-summary', ['shipment' => $shipment, 'typeLabel' => 'Import', 'sailing' => $sailing])
+
+    @include('livewire.customer.partials.shipment-notes', ['notes' => $notes])
 
     {{-- The card only exists while the draft PIB is with the customer: before
          the WaitingConfirmation milestone there is nothing to confirm yet. --}}
@@ -72,24 +74,6 @@
             </div>
         @endif
 
-        @if ($ownNotes->isNotEmpty())
-            <div class="mt-6 border-t border-slate-200 pt-4">
-                <h3 class="text-sm font-medium text-slate-700">Your messages</h3>
-                <ul class="mt-2 space-y-2">
-                    @foreach ($ownNotes as $note)
-                        <li class="rounded-md bg-slate-50 p-3">
-                            <p class="whitespace-pre-line text-sm text-slate-700">{{ $note->body }}</p>
-                            <p
-                                class="mt-1 text-xs text-slate-400"
-                                title="{{ $note->created_at->toDayDateTimeString() }}"
-                            >
-                                Sent {{ $note->created_at->diffForHumans() }}
-                            </p>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
         </div>
     </div>
     @endif

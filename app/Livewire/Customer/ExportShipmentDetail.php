@@ -8,6 +8,8 @@
  *   lifted from reached timeline steps), the shipment-level journey
  *   timeline and the container accordions (summary + per-step progress
  *   from ShipmentTimeline::forContainers()).
+ * - Lists every note on the shipment in the Notes card; container notes
+ *   are not shown.
  * How to use: route customer.export-shipments.show.
  * How to extend: surface more customer-visible fields as they are added.
  */
@@ -50,6 +52,7 @@ class ExportShipmentDetail extends Component
             'shipment' => $shipment,
             'containers' => $containers,
             'containerProgress' => $timeline->forContainers($shipment, $containers),
+            'notes' => $shipment->notes()->with('author')->latest()->get(),
             'timeline' => $entries,
             'sailing' => $timeline->sailingInformation($entries),
         ]);
