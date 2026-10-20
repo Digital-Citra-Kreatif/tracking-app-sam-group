@@ -1,6 +1,7 @@
 {{-- File: resources/views/livewire/customer/export-shipment-detail.blade.php
      Responsibility: Customer view of one export shipment, its journey and containers.
-     What it does: shows shipment facts, the journey timeline and the sailing + containers card.
+     What it does: shows shipment facts, the shipment notes, the journey timeline and the
+       sailing + containers card.
      How to use: rendered by App\Livewire\Customer\ExportShipmentDetail.
      How to extend: add customer-visible fields as they are published. --}}
 <div>
@@ -13,6 +14,8 @@
     </h1>
 
     @include('livewire.customer.partials.shipment-summary', ['shipment' => $shipment, 'typeLabel' => 'Export', 'sailing' => $sailing])
+
+    @include('livewire.customer.partials.shipment-notes', ['notes' => $notes])
 
     @include('components.shipment-timeline', ['entries' => $timeline])
 

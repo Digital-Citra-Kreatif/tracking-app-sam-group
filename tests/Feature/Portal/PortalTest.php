@@ -1515,22 +1515,31 @@ class PortalTest extends TestCase
         ]);
     }
 
-    public function test_notes_from_other_authors_stay_internal(): void
+    public function test_shipment_notes_from_the_office_show_in_the_portal(): void
     {
         $user = $this->portalUser();
-        $colleague = $this->portalUser('colleague@example.com', 'Colleague Co');
-        $shipment = $this->importShipmentFor($user->companies()->first(), 'BL-IMP-INTERNAL');
+        $office = User::factory()->create(['name' => 'Office Staff']);
+        $company = $user->companies()->first();
 
-        $shipment->notes()->create([
-            'body' => 'Internal office remark',
-            'author_id' => $colleague->getKey(),
-        ]);
+        $import = $this->importShipmentFor($company, 'BL-IMP-NOTES');
+        $import->notes()->create(['body' => 'Documents received, checking now.', 'author_id' => $office->getKey()]);
+        $import->notes()->create(['body' => 'Please send the invoice.', 'author_id' => $user->getKey()]);
+        $import->containers()->firstOrFail()
+            ->notes()->create(['body' => 'Container-only remark', 'author_id' => $office->getKey()]);
+
+        $export = $this->exportShipmentFor($company, 'BL-EXP-NOTES');
+        $export->notes()->create(['body' => 'Stuffing moved to Friday.', 'author_id' => $office->getKey()]);
 
         $this->actingAs($user);
 
-        Livewire::test(ImportShipmentDetail::class, ['importShipment' => $shipment->getKey()])
+        Livewire::test(ImportShipmentDetail::class, ['importShipment' => $import->getKey()])
             ->assertOk()
-            ->assertDontSee('Internal office remark');
+            ->assertSee(['Notes', 'Documents received, checking now.', 'Office Staff', 'Please send the invoice.', 'You'])
+            ->assertDontSee('Container-only remark');
+
+        Livewire::test(ExportShipmentDetail::class, ['exportShipment' => $export->getKey()])
+            ->assertOk()
+            ->assertSee(['Stuffing moved to Friday.', 'Office Staff']);
     }
 
     public function test_confirming_an_already_confirmed_draft_changes_nothing(): void

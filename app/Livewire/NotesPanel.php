@@ -6,6 +6,8 @@
  * What it does:
  * - Any internal user sees every note and adds their own; NotePolicy allows
  *   only the author to edit or delete a note.
+ * - Shipment notes are also shown to the customer in the portal, so the
+ *   composer says so there.
  * - Every change is recorded in the activity log (note_created/updated/deleted).
  * How to use: embedded via Filament's LivewireField on edit forms; the target
  *   arrives as the form's record.
@@ -140,6 +142,7 @@ class NotesPanel extends Component
     {
         return view('livewire.notes-panel', [
             'notes' => $this->noteable()->notes()->with('author')->latest()->get(),
+            'isVisibleInPortal' => in_array($this->noteableType, [ExportShipment::class, ImportShipment::class], true),
         ]);
     }
 

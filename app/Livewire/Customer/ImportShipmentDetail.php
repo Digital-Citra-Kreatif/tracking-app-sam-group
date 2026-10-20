@@ -15,8 +15,8 @@
  *   gate, so a draft PIB cannot be confirmed before it was sent. Once the
  *   draft is confirmed those actions are neither offered nor accepted: the
  *   guard is here, not only in the view.
- * - Lists the customer's own notes on the shipment; notes written by anyone
- *   else (e.g. the office) stay internal and are never shown here.
+ * - Lists every note on the shipment (office and customer alike) in the
+ *   Notes card; container notes are not shown.
  * How to use: route customer.import-shipments.show.
  * How to extend: surface more customer-visible fields as they are added.
  */
@@ -144,9 +144,7 @@ class ImportShipmentDetail extends Component
             'containerProgress' => $timeline->forContainers($shipment, $containers),
             'draftPibConfirmed' => $this->isDraftPibConfirmed($shipment),
             'waitingForConfirmation' => $this->isWaitingForConfirmation($shipment),
-            // Only the customer's own notes: office notes on the shipment
-            // are internal and must not leak into the portal.
-            'ownNotes' => $shipment->notes()->where('author_id', auth()->id())->latest()->get(),
+            'notes' => $shipment->notes()->with('author')->latest()->get(),
             'timeline' => $entries,
             'sailing' => $timeline->sailingInformation($entries),
         ]);
